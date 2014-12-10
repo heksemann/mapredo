@@ -1,0 +1,63 @@
+%define RELEASE 1
+
+Name: @PACKAGE@
+Version: @VERSION@
+License: LGPL
+Vendor: Hextreme.com
+Group: Development/Libraries
+Summary: Map-reduce engine for small/medium data
+Release: %RELEASE
+Source: %{name}-%{version}.tar.gz
+URL: http://hextreme.com/mapredo
+BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
+Packager: Kjell Irgens <mapredo@hextreme.com>
+BuildRequires: snappy-devel
+Requires(pre): shadow-utils
+
+%description
+%{name} is an embeddable map-reduce engine written in C++11.  It
+currently supports only a single server.
+
+%package devel
+Group: Development/Libraries
+Summary: Development files for %{name} classes (static libs and headers)
+Requires: %{name} = %version
+
+%description devel
+lib%{name} is a library used by map-reducers.
+
+
+%prep
+%setup -q
+
+%build
+%configure
+make %{?_smp_mflags}
+make check
+
+%install
+rm -rf $RPM_BUILD_ROOT
+make install DESTDIR=$RPM_BUILD_ROOT
+rm $RPM_BUILD_ROOT%{_libdir}/*.la
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+%post
+getent group %{name} >/dev/null || groupadd -r %{name}
+chgrp %{name} $RPM_BUILD_ROOT/%{_localstatedir}/tmp/%{name}
+chmod g+rwx $RPM_BUILD_ROOT/%{_localstatedir}/tmp/%{name}
+exit 0
+
+%files
+%defattr(-, root, root)
+%{_bindir}/*
+%{_libdir}/*.so.*
+%{_libdir}/%{name}
+%{_localstatedir}/tmp/%{name}
+
+%files devel
+%defattr(-, root, root)
+%{_libdir}/*.so
+%{_includedir}/%{name}
+#%{_datadir}/doc/%{name}-%{version}
