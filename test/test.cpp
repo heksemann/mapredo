@@ -6,7 +6,7 @@
 #include "compression.h"
 #include "directory.h"
 #include "plugin_loader.h"
-#include "base.h"
+#include "mapreducer.h"
 
 TEST(compression, restore)
 {
@@ -56,7 +56,7 @@ TEST(directory, remove)
 
     for (auto file: dir)
     {
-	EXPECT_GT (file.size(), 4);
+	EXPECT_GT (strlen(file), 4);
 	i++;
     }
     EXPECT_EQ (4, i);
@@ -75,11 +75,12 @@ TEST(plugin_loader, get)
 {
     plugin_loader loader ("../plugins/.libs/wordcount.so");
 
-    mapred::base& mapreducer (loader.get());
+    mapredo::base& mapreducer (loader.get());
     (void)mapreducer;
 }
 
-class  btest : public mapredo::base<double>
+#if 0
+class  btest : public mapredo::mapreducer<double>
 {
 public:
     void map (char *line, const int length, mapredo::collector& output) {
@@ -92,20 +93,20 @@ public:
         output.collect (story.c_str(), story.length());
     }
 };
-class mcollector: public mapredo::collector()
+class mcollector: public mapredo::collector
 {
 public:
     void collect (const char* line, const int length) {
-	if
         std::cout << std::string (line, length) << "\n";
     }
-}
+};
 
 TEST(base, map)
 {
     btest m;
     m.map
 }
+#endif
 
 int main (int argc, char **argv)
 {
