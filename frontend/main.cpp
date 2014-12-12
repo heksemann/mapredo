@@ -73,19 +73,13 @@ static void run (const char* const plugin_file,
 		 const int max_files,
 		 const bool map_only)
 {
-    if (verbose)
-    {
-	std::cerr << "Maximum buffer size is " << buffer_size << " bytes.\n"
-		  << "Using " << parallel << " threads,"
-		  << " with HW concurrency at "
-		  << std::thread::hardware_concurrency()
-		  << "\n";
-    }
-
     plugin_loader plugin (plugin_file);
     auto& mapreducer (plugin.get());
     engine mapred_engine (TMPDIR, subdir, parallel, buffer_size, max_files);
-    char buf[0x2000];
+//    char buf[0x2000];
+//    char buf[0x4000];
+    size_t buf_size = 0x2000;
+    std::unique_ptr<char[]> buf (new char[buf_size]);
     size_t start = 0, end = 0;
     size_t i;
     ssize_t bytes;
@@ -93,27 +87,36 @@ static void run (const char* const plugin_file,
     bool first = true;
     timeval start_time;
 
-    while ((bytes = read(STDIN_FILENO, buf + end, sizeof(buf) - end)) > 0)
+    while ((bytes = read(STDIN_FILENO, buf.get() + end, buf_size - end)) > 0)
     {
 	end += bytes;
 	if (first)
 	{
+	    first = false;
+
 	    // Skip any Windows style UTF-8 header
 	    unsigned char u8header[] = {0xef, 0xbb, 0xbf};
-	    if (end - start >= 3 && memcmp(buf + start, u8header, 3) == 0)
+	    if (end - start >= 3 && memcmp(buf.get() + start, u8header, 3) == 0)
 	    {
 		start += 3;
 	    }
 	    gettimeofday (&start_time, NULL);
 	    mapred_engine.enable_sorters (mapreducer.type(),
 					  false);
-	    first = false;
+	    if (verbose)
+	    {
+		std::cerr << "Maximum buffer size is " << buffer_size
+			  << " bytes.\nUsing " << parallel << " threads,"
+			  << " with HW concurrency at "
+			  << std::thread::hardware_concurrency()
+			  << "\n";
+	    }
 	}
 	for (i = start; i < end; i++)
 	{
 	    if (buf[i] == '\n')
 	    {
-		mapreducer.map(buf + start, i - start, mapred_engine);
+		mapreducer.map(buf.get() + start, i - start, mapred_engine);
 		start = i + 1;
 	    }
 	}
@@ -121,18 +124,18 @@ static void run (const char* const plugin_file,
 	{
 	    if (start == 0)
 	    {
-		std::ostringstream stream;
-
-		stream << "No support for input lines longer than "
-			<< sizeof(buf) << " bytes";
-		throw std::runtime_error (stream.str());
+		buf_size *= 2; // double line buffer
+		char* nbuf = new char[buf_size];
+		memcpy (nbuf, buf.get(), end);
+		buf.reset (nbuf);
 	    }
-	    memmove (buf, buf + start, end - start);
+	    memmove (buf.get(), buf.get() + start, end - start);
 	    end -= start;
 	    start = 0;
 	}
 	else start = end = 0;
     }
+    if (first) return; // no input
 
     if (verbose)
     {
