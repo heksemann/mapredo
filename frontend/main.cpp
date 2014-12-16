@@ -3,12 +3,12 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <getopt.h>
 #include <libgen.h>
 #include <dlfcn.h>
 #include <iostream>
 #include <thread>
 #include <stdexcept>
+#include <tclap/CmdLine.h>
 
 #include <mapredo/settings.h>
 #include <mapredo/engine.h>
@@ -35,7 +35,7 @@ static double time_since (timeval& time)
     return duration;
 }
 
-static void reduce (const char* const plugin_file,
+static void reduce (const std::string& plugin_file,
 		    const std::string& subdir,
 		    const bool verbose,
 		    const int parallel,
@@ -65,7 +65,7 @@ static void reduce (const char* const plugin_file,
     }
 }
 
-static void run (const char* const plugin_file,
+static void run (const std::string& plugin_file,
 		 const std::string& subdir,
 		 const bool verbose,
 		 const size_t buffer_size,
@@ -158,113 +158,68 @@ static void run (const char* const plugin_file,
 int
 main (int argc, char* argv[])
 {
-    int c;
     int64_t buffer_size = 10 * 1024 * 1024;
     int parallel = std::thread::hardware_concurrency();
     int max_files = 20 * parallel;
     int verbose = false;
     int compression = true;
     std::string subdir;
-    int map_only = false;
-    int reduce_only = false;
-    int keep_tmpfiles = false;
-    bool error = false;
-    const struct option long_options[] = {
-	{"buffer-size", required_argument, 0, 'b'},
-	{"max-open-files", required_argument, 0, 'f'},
-	{"threads", required_argument, 0, 'j'},
-	{"verbose", no_argument, &verbose, 1},
-	{"no-compression", no_argument, &compression, 0},
-	{"subdir", required_argument, 0, 's'},
-	{"map-only", no_argument, &map_only, 1},
-	{"reduce-only", no_argument, &reduce_only, 1},
-	{"keep-tmpfiles", no_argument, &keep_tmpfiles, 1},
-	{0, 0, 0, 0}
-    };
+    bool map_only = false;
+    bool reduce_only = false;
+    bool keep_tmpfiles = false;
+    std::string plugin_path;
+
     settings& config (settings::instance());
 
-    for (;;)
+    try
     {
-	/* getopt_long stores the option index here. */
-	int option_index = 0;
+	TCLAP::CmdLine cmd ("mapredo: Map-reduce engine for small/medium data", ' ', PACKAGE_VERSION);
+	TCLAP::ValueArg<std::string> subdirArg ("s", "subdir", "Subdirectory to use", false, "", "string", cmd);
+	TCLAP::ValueArg<std::string> bufferSizeArg ("b", "buffer-size", "Buffer size to use", false, "10M", "size", cmd);
+	TCLAP::ValueArg<int> maxFilesArg ("f", "max-open-files", "Maximum number of open files", false, max_files, "number", cmd);
+	TCLAP::ValueArg<int> threadsArg ("j", "threads", "Number of threads to use", false, parallel, "threads", cmd);
+	TCLAP::SwitchArg verboseArg ("", "verbose", "Verbose output", cmd, false);
+	TCLAP::SwitchArg noCompressionArg ("", "no-compression", "Disable compression", cmd, false);
+	TCLAP::SwitchArg keepFilesArg ("", "keep-tmpfiles", "Keep the temporary files after completion", cmd, false);
+	TCLAP::SwitchArg mapOnlyArg ("", "map-only", "Only perform the mapping stage", cmd, false);
+	TCLAP::SwitchArg reduceOnlyArg ("", "reduce-only", "Only perform the reduce stage", cmd, false);
+	TCLAP::UnlabeledValueArg<std::string> pluginArg ("plugin", "Plugin file to use", true, "", "plugin file", cmd);
 
-	c = getopt_long (argc, argv, "b:f:j:s:mr", long_options, &option_index);
-	if (c == -1) break;
+	cmd.parse (argc, argv);
+	subdir = subdirArg.getValue();
+	buffer_size = config.parse_size (bufferSizeArg.getValue());
+	max_files = maxFilesArg.getValue();
+	parallel = threadsArg.getValue();
+	verbose = verboseArg.getValue();
+	keep_tmpfiles = keepFilesArg.getValue();
+	map_only = mapOnlyArg.getValue();
+	reduce_only = reduceOnlyArg.getValue();
+	plugin_path = pluginArg.getValue();
 
-	switch (c)
+	if (max_files < 3)
 	{
-	case 0:
-	    break;
+	    throw TCLAP::ArgException ("Can not work with less than 3 files", "max-open-files");
+	}
 
-	case 'b':
-	    buffer_size = config.parse_size (optarg);
-	    break;
-
-	case 'f':
-	    max_files = atoi (optarg);
-	    if (max_files < 3)
-	    {
-		std::cerr << "Can not work with less than 3 files\n";
-		error = true;
-	    }
-	    break;
-
-	case 'j':
-	    parallel = atoi (optarg);
-	    break;
-
-	case 'm':
-	    map_only = true;
-	    break;
-
-	case 'r':
-	    reduce_only = true;
-	    break;
-
-	case 's':
-	    subdir = optarg;
-	    break;
-	  
-	case '?': /* getopt_long already printed an error message. */
-	    error = true;
-	    break;
-	  
-	default:
-	    return 1;
+	if (reduce_only && map_only)
+	{
+	    throw TCLAP::ArgException ("Options --map-only and --reduce-only are mutually exclusive", "map_only");
+	}
+	if (map_only && subdir.empty())
+	{
+	    throw TCLAP::ArgException ("Option --map-only cannot be used without --subdir", "map-only");
+	}
+	if (reduce_only && subdir.empty())
+	{
+	    throw TCLAP::ArgException ("Option --reduce-only cannot be used without --subdir", "reduce-only");
 	}
     }
-
-    if (reduce_only && map_only)
+    catch (const TCLAP::ArgException& e)
     {
-	error = true;
-	std::cerr << "Options --map-only and --reduce-only are mutually"
-		  << " exclusive\n";
-    }
-    if (map_only && subdir.empty())
-    {
-	error = true;
-	std::cerr << "Option --map-only cannot be used without --subdir\n";
-    }
-    if (reduce_only && subdir.empty())
-    {
-	error = true;
-	std::cerr << "Option --reduce-only cannot be used without --subdir\n";
-    }
-
-    if (argc - optind != 1 || error)
-    {
-	std::cerr << "Usage: "  << basename(argv[0])
-		  << " [OPTIONS] <plugin.so>\n"
-		  << "\t-b,--buffer-size <size>\n"
-	    	  << "\t-j,--threads <threads>\n"
-		  << "\t-f,--max-open-files <number>\n"
-		  << "\t-s,--subdir <name>\n"
-		  << "\t-m,--map-only\n"
-		  << "\t-r,--reduce-only\n"
-		  << "\t--no-compression\n"
-		  << "\t--verbose\n";
+	std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
 	return (1);
     }
+
     if (verbose) config.set_verbose();
     if (compression) config.set_compressed();
     if (keep_tmpfiles) config.set_keep_tmpfiles();
@@ -273,11 +228,11 @@ main (int argc, char* argv[])
     {
 	if (reduce_only)
 	{
-	    reduce (argv[optind], subdir, verbose, parallel, max_files);
+	    reduce (plugin_path, subdir, verbose, parallel, max_files);
 	}
 	else
 	{
-	    run (argv[optind], subdir, verbose, buffer_size, parallel,
+	    run (plugin_path, subdir, verbose, buffer_size, parallel,
 		 max_files, map_only);
 	}
     }

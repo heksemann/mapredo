@@ -9,6 +9,8 @@ AC_CHECK_HEADER([snappy.h],,
                 [AC_MSG_ERROR([Unable to find Snappy header files.])])
 AC_CHECK_HEADER([gtest/gtest.h],,
                 [AC_MSG_ERROR([Unable to find Google Test header files.])])
+AC_CHECK_HEADER([tclap/CmdLine.h],,
+                [AC_MSG_ERROR([Unable to find tclap header files.])])
 
 LT_INIT([disable-static dlopen])
 AC_CONFIG_MACRO_DIR([m4])

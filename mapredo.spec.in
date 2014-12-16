@@ -11,7 +11,7 @@ Source: %{name}-%{version}.tar.gz
 URL: http://hextreme.com/mapredo
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 Packager: Kjell Irgens <mapredo@hextreme.com>
-BuildRequires: snappy-devel
+BuildRequires: snappy-devel, tclap
 Requires(pre): shadow-utils
 
 %description
