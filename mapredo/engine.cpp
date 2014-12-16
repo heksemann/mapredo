@@ -9,6 +9,7 @@
 #include "collector.h"
 #include "directory.h"
 #include "settings.h"
+#include "plugin_loader.h"
 
 engine::engine (const std::string& tmpdir,
 		const std::string& subdir,
@@ -47,19 +48,21 @@ engine::enable_sorters (const mapredo::base::keytype type, const bool reverse)
 }
 
 void
-engine::flush (mapredo::base* mapreducer)
+engine::flush()
 {
     for (auto& sorter: _sorters) sorter.flush();
 
-    if (!mapreducer)
+    for (auto& sorter: _sorters)
     {
-	for (auto& sorter: _sorters)
-	{
-	    sorter.wait_flushed();
-	    sorter.grab_tmpfiles();
-	}
-	return;
+	sorter.wait_flushed();
+	sorter.grab_tmpfiles();
     }
+}
+
+void
+engine::flush (mapredo::base& mapreducer, plugin_loader& loader)
+{
+    for (auto& sorter: _sorters) sorter.flush();
 
     for (auto& sorter: _sorters)
     {
@@ -73,7 +76,7 @@ engine::flush (mapredo::base* mapreducer)
 	else if (tmpfiles.size())
 	{
 	    _mergers.push_back
-		(file_merger(*mapreducer,
+		(file_merger(loader.get(),
 			     static_cast<std::list<std::string>&&>(tmpfiles),
 			     _tmpdir, _unique_id++, 0x20000,
 			     _max_files/_parallel));
@@ -81,11 +84,11 @@ engine::flush (mapredo::base* mapreducer)
     }
     _sorters.clear();
 
-    merge (*mapreducer);
+    merge (mapreducer);
 }
 
 void
-engine::reduce (mapredo::base& mapreducer)
+engine::reduce (mapredo::base& mapreducer, plugin_loader& loader)
 {
     if (!_is_subdir)
     {
@@ -122,7 +125,7 @@ engine::reduce (mapredo::base& mapreducer)
 	    {
 		_mergers.push_back
 		    (file_merger
-		     (mapreducer,
+		     (loader.get(),
 		      static_cast<std::list<std::string>&&>(tmpfiles),
 		      _tmpdir, _unique_id++, 0x20000, _max_files/_parallel));
 	    }

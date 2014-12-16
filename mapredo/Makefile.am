@@ -1,5 +1,7 @@
 lib_LTLIBRARIES = libmapredo.la
 
+AM_CXXFLAGS += -DPLUGINSDIR=\"$(libdir)/mapredo\"
+
 libmapredo_la_SOURCES = \
 	directory.cpp \
 	engine.cpp \

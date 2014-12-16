@@ -14,7 +14,7 @@ public:
     wordcount() {}
     virtual ~wordcount() {}
     void map (char* line, const int length, mapredo::collector& output);
-    void reduce (std::string key, const vlist& values,
+    void reduce (std::string key, vlist& values,
 		 mapredo::collector& output);
     bool reducer_can_combine() const {return true;}
 

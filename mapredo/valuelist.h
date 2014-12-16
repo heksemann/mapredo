@@ -20,10 +20,10 @@ namespace mapredo
 	/**
 	 * Iterator for values to reducer.
 	 */
-	class const_iterator
+	class iterator
 	{
 	public:
-	    const_iterator(tmpfile_reader_queue& queue) :
+	    iterator(tmpfile_reader_queue& queue) :
 		_queue(&queue), _index(0) {
 		auto* proc = (*_queue->begin()).second;
 
@@ -31,9 +31,9 @@ namespace mapredo
 		_value = proc->get_next_value();
 		//std::cerr << "F " << _key << "(" << proc->filename() << ")\n";
 	    }
-	    const_iterator () {} // for end
+	    iterator () {} // for end
 	
-	    const const_iterator& operator++() {
+	    const iterator& operator++() {
 		auto* proc = (*_queue->begin()).second;
 		const T* next_key = proc->next_key();
 
@@ -112,40 +112,40 @@ namespace mapredo
 		_index = -1;
 		return *this;
 	    }
-	    bool operator==(const const_iterator& other) const {
+	    bool operator==(const iterator& other) const {
 		return _index == other._index;
 	    }
-	    bool operator!=(const const_iterator& other) const {
+	    bool operator!=(const iterator& other) const {
 		return _index != other._index;
 	    }
 
-	    const char* operator*() const {return _value;}
+	    char* operator*() {return _value;}
 	private:
 	    tmpfile_reader_queue* _queue = nullptr;
 	    int _index = -1;
 	    T _key;
-	    const char* _value;
+	    char* _value;
 	};
 
 	valuelist (tmpfile_reader_queue& queue) :
 	    _queue (queue) {}
 
-	const_iterator begin() const {
+	iterator begin() const {
 	    if (!_queue.empty())
 	    {
 		auto* proc ((*_queue.begin()).second);
 		const T* key (proc->next_key());
 
-		if (key) return const_iterator(_queue);
-		else return const_iterator();
+		if (key) return iterator(_queue);
+		else return iterator();
 	    }
-	    else return const_iterator();
+	    else return iterator();
 	}
-	const const_iterator& end() const {return _end;}
+	const iterator& end() const {return _end;}
 
     private:
 	tmpfile_reader_queue& _queue;
-	const_iterator _end;
+	iterator _end;
     };
 }
 

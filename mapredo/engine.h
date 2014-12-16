@@ -10,6 +10,8 @@
 #include "file_merger.h"
 #include "base.h"
 
+class plugin_loader;
+
 /**
  * Class used to run map reduce algorithm
  */
@@ -31,16 +33,25 @@ public:
     void enable_sorters (const mapredo::base::keytype type, const bool reverse);
 
     /**
-     * Go through all sorted temporary files and generate a reduced
-     * file.  If map_to is set, skip merging of files.
+     * Flush content of all sorted temporary files.
      */
-    void flush (mapredo::base* mapreducer);
+    void flush();
+
+    /**
+     * Go through all sorted temporary files and generate a reduced
+     * file.
+     * @param mapreducer mapreducer object
+     * @param loader plugin loader factory for creation of extra mapreducers
+     */
+    void flush (mapredo::base& mapreducer, plugin_loader& loader);
 
     /**
      * Reduce only.  Reduction is normally done inside flush, but this can be
      * used to reduce existing files in subdir.
+     * @param mapreducer mapreducer object
+     * @param loader plugin loader factory for creation of extra mapreducers
      */
-    void reduce (mapredo::base& mapreducer);
+    void reduce (mapredo::base& mapreducer, plugin_loader& loader);
 
     /** Used to collect data, called from mapper */
     void collect (const char* line, const int length);

@@ -33,12 +33,12 @@ wordcount::map (char* line, const int length, mapredo::collector& output)
 }
 
 void
-wordcount::reduce (std::string key, const vlist& values,
+wordcount::reduce (std::string key, vlist& values,
 		   mapredo::collector& output)
 {
     int count = 0;
 
-    for (const auto& value : values)
+    for (char* value : values)
     {
 	if (*value) count += atoi(value);
 	else count++;
