@@ -57,8 +57,7 @@ namespace mapredo
 	 *               iterated over.
 	 * @param collector used 0 or more times to output reduce results.
 	 */
-	virtual void reduce (T key, const vlist& values,
-			     collector& output) = 0;
+	virtual void reduce (T key, vlist& values, collector& output) = 0;
 
 	bool reverse() const {return _reverse;}
 	bool numeric() const {return _numeric;}

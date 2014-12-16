@@ -56,7 +56,7 @@ static void reduce (const std::string& plugin_file,
 
     if (verbose) gettimeofday (&start_time, NULL);
 
-    mapred_engine.reduce (mapreducer);
+    mapred_engine.reduce (mapreducer, plugin);
 
     if (verbose)
     {
@@ -76,8 +76,6 @@ static void run (const std::string& plugin_file,
     plugin_loader plugin (plugin_file);
     auto& mapreducer (plugin.get());
     engine mapred_engine (TMPDIR, subdir, parallel, buffer_size, max_files);
-//    char buf[0x2000];
-//    char buf[0x4000];
     size_t buf_size = 0x2000;
     std::unique_ptr<char[]> buf (new char[buf_size]);
     size_t start = 0, end = 0;
@@ -116,6 +114,7 @@ static void run (const std::string& plugin_file,
 	{
 	    if (buf[i] == '\n')
 	    {
+		buf[i] = '\0';
 		mapreducer.map(buf.get() + start, i - start, mapred_engine);
 		start = i + 1;
 	    }
@@ -145,14 +144,14 @@ static void run (const std::string& plugin_file,
 
     if (!map_only)
     {
-	mapred_engine.flush (&mapreducer);
+	mapred_engine.flush (mapreducer, plugin);
 	if (verbose)
 	{
 	    std::cerr << "Merging finished in " << std::fixed
 		      << time_since (start_time) << "s\n";
 	}
     }
-    else mapred_engine.flush (nullptr);
+    else mapred_engine.flush();
 }
 
 int

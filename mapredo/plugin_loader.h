@@ -4,6 +4,7 @@
 #define _HEXTREME_MAPREDO_PLUGIN_LOADER_H
 
 #include <dlfcn.h>
+#include <sys/stat.h>
 #include <iostream>
 
 #include "base.h"
@@ -11,6 +12,11 @@
 class plugin_loader
 {
 public:
+    /**
+     * Create a loader able to provide new map-reduce objects from a
+     * plugin module.
+     * @param plugin_path absolute or relative path to .so module file
+     */
     plugin_loader (std::string plugin_path) {
 	if (plugin_path.size() < 4
 	    || plugin_path.substr(plugin_path.size() - 3) != ".so")
@@ -39,15 +45,35 @@ public:
 	{
 	    std::cerr << "Can not unload plugin: " << err << "\n";
 	}
-	else destroyer (_mapred);
+	else
+	{
+	    for (auto* obj: _mapred)
+	    {
+		destroyer (obj);
+	    }
+	}
 
 	dlclose (_lib);
     }
 
+    /**
+     * Get a new mapreducer object.  The object is automatically destroyed
+     * with the plugin loader object.
+     */
     mapredo::base& get() {
-	return *_mapred;
+	auto* mapred = _creator();
+	if (!mapred)
+	{
+	    throw std::runtime_error ("The create() function of \"" + _path 
+				      + "\" returned a null pointer");
+	}
+	_mapred.push_back (mapred);
+	return *mapred;
     }
+
 private:
+    typedef mapredo::base* (*create_t)();
+
     bool load (const std::string& path) {
 	struct stat st;
 
@@ -60,12 +86,11 @@ private:
 					  + dlerror());
 	    }
 	    dlerror(); // reset error
-	    typedef mapredo::base* (*create_t)();
 
 #ifdef __GNUC__
 	    __extension__
 #endif
-	    auto creator = (create_t)dlsym(_lib, "create");
+	    _creator = (create_t)dlsym(_lib, "create");
 	    auto err = dlerror();
 	    if (err)
 	    {
@@ -73,22 +98,16 @@ private:
 		throw std::runtime_error (std::string("Can not load plugin: ")
 					  + err);
 	    }
-
-	    _mapred = creator();
-	    if (!_mapred)
-	    {
-		dlclose (_lib);
-		throw std::runtime_error ("The create() function of \"" + path 
-					  + "\" returned a null pointer");
-	    }
-	    
+	    _path = path;
 	    return true;
 	}
 	else return false;
     }
 
-    mapredo::base* _mapred;
+    create_t _creator;
+    std::vector<mapredo::base*> _mapred;
     void* _lib;
+    std::string _path;
 };
 
 #endif

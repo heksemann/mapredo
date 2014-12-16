@@ -35,11 +35,11 @@ public:
     const char* get_next_line (size_t& length);
 
     /**
-     * Get the next value, null terminated.  Remember to check next_key()
-     * before calling this function.
+     * Get the next value, null terminated.  Remember to check
+     * next_key() before calling this function.
      * @returns null terminated pointer to next value field or nullptr.
      */
-    const char* get_next_value();
+    char* get_next_value();
 
 protected:
     data_reader() {
@@ -124,7 +124,7 @@ data_reader<T>::fill_next_key()
     set_key (_key, _buffer + _start_pos, _keylen);
 }
 
-template <class T> const char*
+template <class T> char*
 data_reader<T>::get_next_value()
 {
     if (_keylen == 0)
@@ -153,7 +153,7 @@ data_reader<T>::get_next_value()
 
     if (!read_more())
     {
-	const char* value;
+	char* value;
 
 	// Premature ending, no newline
 	std::cerr << "Premature ending, no newline\n";
@@ -162,7 +162,7 @@ data_reader<T>::get_next_value()
 	    value = _buffer + _start_pos + _keylen + 1;
 	    _buffer[_end_pos] = '\0';
 	}
-	else value = "";
+	else value = const_cast<char*>("");
 
 	_keylen = -1;
 	return value;
@@ -183,14 +183,14 @@ data_reader<T>::get_next_value()
 	}
     }
 
-    const char* value;
+    char* value;
 
     if (_buffer[_start_pos + _keylen] == '\n')
     {
 	value = _buffer + _start_pos + _keylen + 1;
 	_buffer[_end_pos] = '\0';
     }
-    else value = "";
+    else value = const_cast<char*>("");
 
     _keylen = 0;
     return value;

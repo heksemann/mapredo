@@ -20,10 +20,10 @@ wordsort::map (char* line, const int length, mapredo::collector& output)
 }
 
 void
-wordsort::reduce (int64_t key, const vlist& values,
+wordsort::reduce (int64_t key, vlist& values,
 		  mapredo::collector& output)
 {
-    for (const auto& value : values)
+    for (char* value : values)
     {
 	output.collect_keyval (value, key);
     }
