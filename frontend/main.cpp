@@ -114,8 +114,17 @@ static void run (const std::string& plugin_file,
 	{
 	    if (buf[i] == '\n')
 	    {
-		buf[i] = '\0';
-		mapreducer.map(buf.get() + start, i - start, mapred_engine);
+		if (i == start || buf[i-1] != '\r')
+		{
+		    buf[i] = '\0';
+		    mapreducer.map(buf.get() + start, i - start, mapred_engine);
+		}
+		else
+		{
+		    buf[i-1] = '\0';
+		    mapreducer.map (buf.get() + start, i - start - 1,
+				    mapred_engine);
+		}
 		start = i + 1;
 	    }
 	}
@@ -172,17 +181,33 @@ main (int argc, char* argv[])
 
     try
     {
-	TCLAP::CmdLine cmd ("mapredo: Map-reduce engine for small/medium data", ' ', PACKAGE_VERSION);
-	TCLAP::ValueArg<std::string> subdirArg ("s", "subdir", "Subdirectory to use", false, "", "string", cmd);
-	TCLAP::ValueArg<std::string> bufferSizeArg ("b", "buffer-size", "Buffer size to use", false, "10M", "size", cmd);
-	TCLAP::ValueArg<int> maxFilesArg ("f", "max-open-files", "Maximum number of open files", false, max_files, "number", cmd);
-	TCLAP::ValueArg<int> threadsArg ("j", "threads", "Number of threads to use", false, parallel, "threads", cmd);
-	TCLAP::SwitchArg verboseArg ("", "verbose", "Verbose output", cmd, false);
-	TCLAP::SwitchArg noCompressionArg ("", "no-compression", "Disable compression", cmd, false);
-	TCLAP::SwitchArg keepFilesArg ("", "keep-tmpfiles", "Keep the temporary files after completion", cmd, false);
-	TCLAP::SwitchArg mapOnlyArg ("", "map-only", "Only perform the mapping stage", cmd, false);
-	TCLAP::SwitchArg reduceOnlyArg ("", "reduce-only", "Only perform the reduce stage", cmd, false);
-	TCLAP::UnlabeledValueArg<std::string> pluginArg ("plugin", "Plugin file to use", true, "", "plugin file", cmd);
+	TCLAP::CmdLine cmd ("mapredo: Map-reduce engine for small/medium data",
+			    ' ', PACKAGE_VERSION);
+	TCLAP::ValueArg<std::string> subdirArg
+	    ("s", "subdir", "Subdirectory to use",
+	     false, "", "string", cmd);
+	TCLAP::ValueArg<std::string> bufferSizeArg
+	    ("b", "buffer-size", "Buffer size to use",
+	     false, "10M", "size", cmd);
+	TCLAP::ValueArg<int> maxFilesArg
+	    ("f", "max-open-files", "Maximum number of open files",
+	     false, max_files, "number", cmd);
+	TCLAP::ValueArg<int> threadsArg
+	    ("j", "threads", "Number of threads to use",
+	     false, parallel, "threads", cmd);
+	TCLAP::SwitchArg verboseArg
+	    ("", "verbose", "Verbose output", cmd, false);
+	TCLAP::SwitchArg noCompressionArg
+	    ("", "no-compression", "Disable compression", cmd, false);
+	TCLAP::SwitchArg keepFilesArg
+	    ("", "keep-tmpfiles", "Keep the temporary files after completion",
+	     cmd, false);
+	TCLAP::SwitchArg mapOnlyArg
+	    ("", "map-only", "Only perform the mapping stage", cmd, false);
+	TCLAP::SwitchArg reduceOnlyArg
+	    ("", "reduce-only", "Only perform the reduce stage", cmd, false);
+	TCLAP::UnlabeledValueArg<std::string> pluginArg
+	    ("plugin", "Plugin file to use", true, "", "plugin file", cmd);
 
 	cmd.parse (argc, argv);
 	subdir = subdirArg.getValue();
@@ -197,25 +222,33 @@ main (int argc, char* argv[])
 
 	if (max_files < 3)
 	{
-	    throw TCLAP::ArgException ("Can not work with less than 3 files", "max-open-files");
+	    throw TCLAP::ArgException
+		("Can not work with less than 3 files", "max-open-files");
 	}
 
 	if (reduce_only && map_only)
 	{
-	    throw TCLAP::ArgException ("Options --map-only and --reduce-only are mutually exclusive", "map_only");
+	    throw TCLAP::ArgException
+		("Options --map-only and --reduce-only are mutually exclusive",
+		 "map_only");
 	}
 	if (map_only && subdir.empty())
 	{
-	    throw TCLAP::ArgException ("Option --map-only cannot be used without --subdir", "map-only");
+	    throw TCLAP::ArgException
+		("Option --map-only cannot be used without --subdir",
+		 "map-only");
 	}
 	if (reduce_only && subdir.empty())
 	{
-	    throw TCLAP::ArgException ("Option --reduce-only cannot be used without --subdir", "reduce-only");
+	    throw TCLAP::ArgException
+		("Option --reduce-only cannot be used without --subdir",
+		 "reduce-only");
 	}
     }
     catch (const TCLAP::ArgException& e)
     {
-	std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
+	std::cerr << "error: " << e.error() << " for arg " << e.argId()
+		  << std::endl;
 	return (1);
     }
 
