@@ -1,7 +1,6 @@
-pg100*
 .deps
 .libs
 Makefile
 Makefile.in
-*.lo
 *.la
+*.lo

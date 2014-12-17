@@ -1,1 +1,5 @@
 mapredo
+.deps
+Makefile
+Makefile.in
+*.o

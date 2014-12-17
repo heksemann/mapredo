@@ -1,1 +1,9 @@
 gtest
+Makefile
+Makefile.in
+*.gcda
+*.gcno
+*.o
+*.log
+*.trs
+.deps
