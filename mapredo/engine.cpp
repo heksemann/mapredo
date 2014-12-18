@@ -195,16 +195,17 @@ engine::merge (mapredo::base& mapreducer)
     _files_final_merge.clear();
 }
 
-static int hash(const char* str, int siz)
+static unsigned int hash(const char* str, int siz)
 {
-    unsigned int result = 5381;
+    unsigned int result = 0x55555555;
     int i;
 
     for (i = 0; i < siz && str[i] != '\t'; i++)
     {
-	result = ((result << 5) + result) + str[i];
+	result ^= str[i];
+	result = ((result << 5) | (result >> 27));
     }
-    return (int)result;
+    return result;
 }
 
 
