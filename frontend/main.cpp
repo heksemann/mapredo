@@ -1,10 +1,10 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #include <unistd.h>
 #include <libgen.h>
 #include <dlfcn.h>
+#include <chrono>
 #include <iostream>
 #include <thread>
 #include <stdexcept>
@@ -15,24 +15,11 @@
 #include <mapredo/base.h>
 #include <mapredo/plugin_loader.h>
 
-static double time_since (timeval& time)
+static double time_since (const std::chrono::high_resolution_clock::time_point& time)
 {
-    double duration;
-    timeval stop;
-
-    gettimeofday (&stop, NULL);
-    if (stop.tv_usec >= time.tv_usec)
-    {
-	duration = (stop.tv_sec - time.tv_sec
-		    + (stop.tv_usec - time.tv_usec) / 1000000.0);
-    }
-    else
-    {
-	duration = (stop.tv_sec - time.tv_sec - 1
-		    + ((1000000 - time.tv_usec) + stop.tv_usec) / 1000000.0);
-    }
-    time = stop;
-    return duration;
+    auto duration = std::chrono::duration_cast<std::chrono::duration<double>>
+	(std::chrono::high_resolution_clock::now() - time);
+    return duration.count();
 }
 
 static void reduce (const std::string& plugin_file,
@@ -52,9 +39,7 @@ static void reduce (const std::string& plugin_file,
     plugin_loader plugin (plugin_file);
     auto& mapreducer (plugin.get());
     engine mapred_engine (TMPDIR, subdir, parallel, 0, max_files);
-    timeval start_time;
-
-    if (verbose) gettimeofday (&start_time, NULL);
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     mapred_engine.reduce (mapreducer, plugin);
 
@@ -83,7 +68,7 @@ static void run (const std::string& plugin_file,
     ssize_t bytes;
     std::string line;
     bool first = true;
-    timeval start_time;
+    std::chrono::high_resolution_clock::time_point start_time;
 
     while ((bytes = read(STDIN_FILENO, buf.get() + end, buf_size - end)) > 0)
     {
@@ -98,7 +83,7 @@ static void run (const std::string& plugin_file,
 	    {
 		start += 3;
 	    }
-	    gettimeofday (&start_time, NULL);
+	    start_time = std::chrono::high_resolution_clock::now();
 	    mapred_engine.enable_sorters (mapreducer.type(),
 					  false);
 	    if (verbose)
