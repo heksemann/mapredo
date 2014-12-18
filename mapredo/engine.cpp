@@ -195,6 +195,19 @@ engine::merge (mapredo::base& mapreducer)
     _files_final_merge.clear();
 }
 
+static int hash(const char* str, int siz)
+{
+    unsigned int result = 5381;
+    int i;
+
+    for (i = 0; i < siz && str[i] != '\t'; i++)
+    {
+	result = ((result << 5) + result) + str[i];
+    }
+    return (int)result;
+}
+
+
 void
 engine::collect (const char* inbuffer, const int insize)
 {
@@ -206,15 +219,7 @@ engine::collect (const char* inbuffer, const int insize)
 
     if (_parallel > 1)
     {
-	int i;
-	int value = 0;
-	
-	// Very simple hash function here
-	for (i = 0; i < insize && inbuffer[i] != '\t'; i++)
-	{
-	    value += i * inbuffer[i];
-	}
-
+	int value = hash(inbuffer, insize);
 	_sorters[value % _parallel].add (inbuffer, insize);
     }
     else _sorters[0].add (inbuffer, insize);
