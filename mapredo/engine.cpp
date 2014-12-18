@@ -220,8 +220,7 @@ engine::collect (const char* inbuffer, const int insize)
 
     if (_parallel > 1)
     {
-	int value = hash(inbuffer, insize);
-	_sorters[value % _parallel].add (inbuffer, insize);
+	_sorters[hash(inbuffer, insize) % _parallel].add (inbuffer, insize);
     }
     else _sorters[0].add (inbuffer, insize);
 }
