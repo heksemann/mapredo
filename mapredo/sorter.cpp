@@ -249,10 +249,12 @@ sorter::flush_buffer (sorter_buffer* const buffer)
 
     if (_compressor.get())
     {
-	char inbuffer[0x10000];
-	char outbuffer[0x15000];
+	const size_t inbuffer_size = 0x10000;
+	const size_t outbuffer_size = 0x15000;
+	std::unique_ptr<char[]> inbuffer (new char[inbuffer_size]);
+	std::unique_ptr<char[]> outbuffer (new char[outbuffer_size]);
 	size_t inbufpos = 0;
-	size_t outbufpos = sizeof(outbuffer);
+	size_t outbufpos = outbuffer_size;
 
 	for (auto iter = buffer->lookup().begin(); iter != end; iter++)
 	{
@@ -260,19 +262,20 @@ sorter::flush_buffer (sorter_buffer* const buffer)
 	    int i = 0;
 
 	    while (t[i] != '\0' && t[i++] != '\n') ;
-	    if (inbufpos + i > sizeof(inbuffer))
+	    if (inbufpos + i > inbuffer_size)
 	    {
-		_compressor->compress (inbuffer, inbufpos,
-				       outbuffer, outbufpos);
-		tmpfile.write (outbuffer, outbufpos);
+		_compressor->compress (inbuffer.get(), inbufpos,
+				       outbuffer.get(), outbufpos);
+		tmpfile.write (outbuffer.get(), outbufpos);
 		inbufpos = 0;
-		outbufpos = sizeof (outbuffer);
+		outbufpos = outbuffer_size;
 	    }
-	    memcpy (inbuffer + inbufpos, t, i);
+	    memcpy (inbuffer.get() + inbufpos, t, i);
 	    inbufpos += i;
 	}
-	_compressor->compress (inbuffer, inbufpos, outbuffer, outbufpos);
-	tmpfile.write (outbuffer, outbufpos);
+	_compressor->compress (inbuffer.get(), inbufpos,
+				outbuffer.get(), outbufpos);
+	tmpfile.write (outbuffer.get(), outbufpos);
     }
     else
     {
