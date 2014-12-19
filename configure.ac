@@ -5,7 +5,7 @@ AM_INIT_AUTOMAKE([1.10 no-define foreign nostdinc silent-rules])
 AC_PROG_CXX
 AC_LANG([C++])
 
-AC_CHECK_HEADER([snappy.h],,
+AC_CHECK_HEADER([snappy-c.h],,
                 [AC_MSG_ERROR([Unable to find Snappy header files.])])
 AC_CHECK_HEADER([gtest/gtest.h],,
                 [AC_MSG_ERROR([Unable to find Google Test header files.])])
