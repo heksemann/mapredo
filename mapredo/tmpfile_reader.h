@@ -7,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <memory>
+#include <algorithm>
 
 #include "data_reader.h"
 #include "compression.h"
@@ -37,7 +38,7 @@ private:
     size_t _cend_pos = 0;
     size_t _cbuffer_size;
     char* _cbuffer = nullptr;
-    uint64_t _bytes_left_file;
+    size_t _bytes_left_file;
     int _keylen = 0;
     std::unique_ptr<compression> _compressor;
 };
@@ -142,7 +143,7 @@ tmpfile_reader<T>::read_more()
 	    }
 	    else _cstart_pos = _cend_pos = 0;
 
-	    size_t bytes_to_read = std::min (_bytes_left_file,
+	    size_t bytes_to_read = std::min<size_t> (_bytes_left_file,
 					     _cbuffer_size - _cend_pos);
 	    _file.read (_cbuffer + _cend_pos, bytes_to_read);
 	    if (!_file)
@@ -170,7 +171,7 @@ tmpfile_reader<T>::read_more()
 	return true;
     }
 
-    int64_t bytes_to_read = std::min (_bytes_left_file,
+    size_t bytes_to_read = std::min<size_t> (_bytes_left_file,
 				      _buffer_size - this->_end_pos);
 
     //std::cerr << "Have " << _end_pos << " bytes, reading " << bytes_to_read
