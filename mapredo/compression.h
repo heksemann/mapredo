@@ -10,7 +10,7 @@
 #include <iostream>
 #include <sstream>
 
-#include <snappy.h>
+#include <snappy-c.h>
 
 #include "lookup.h"
 
@@ -34,18 +34,22 @@ public:
 		   char *const outbuffer, size_t& outbuffer_size) {
 	if (inbuffer_size > 0x10000) inbuffer_size = 0x10000;
 
-	if (snappy::MaxCompressedLength(inbuffer_size) + 4 > outbuffer_size)
+	if (snappy_max_compressed_length (inbuffer_size) + 4 > outbuffer_size)
 	{
 	    std::ostringstream stream;
 
 	    stream << "Snappy compression buffer too small (" << outbuffer_size
 		   << ") for input data (" << inbuffer_size << "), needs "
-		   << snappy::MaxCompressedLength(inbuffer_size) << " bytes";
+		   << snappy_max_compressed_length (inbuffer_size) << " bytes";
 	    throw std::runtime_error (stream.str());
 	}
 	
-	snappy::RawCompress (inbuffer, inbuffer_size,
-			     outbuffer + 4, &outbuffer_size);
+	if (snappy_compress (inbuffer, inbuffer_size,
+			     outbuffer + 4, &outbuffer_size) != SNAPPY_OK)
+	{
+	    throw std::runtime_error ("Unexpected error during compression");
+	}
+
 	//std::cerr << inbuffer_size << " => " << outbuffer_size << "\n";
 	outbuffer[0] = outbuffer_size & 0xff;
 	outbuffer[1] = (outbuffer_size >> 8) & 0xff;
@@ -80,8 +84,8 @@ public:
 	if (comp_len > inbuffer_size - 4) return false;
 	inbuffer_size = comp_len + 4;
 
-	if (!snappy::GetUncompressedLength (inbuffer + 4, comp_len,
-					    &uncomp_len))
+	if (snappy_uncompressed_length (inbuffer + 4, comp_len,
+					    &uncomp_len) != SNAPPY_OK)
 	{
 	    throw std::runtime_error
 		("Can not parse corrupted Snappy uncompressed size");
@@ -97,9 +101,9 @@ public:
 	    throw std::runtime_error (stream.str());
 	}
 
-	if (snappy::RawUncompress(inbuffer + 4, comp_len, outbuffer))
+	if (snappy_uncompress (inbuffer + 4, comp_len,
+				outbuffer, &outbuffer_size) == SNAPPY_OK)
 	{
-	    outbuffer_size = uncomp_len;
 	    return true;
 	}
 
@@ -108,7 +112,7 @@ public:
     }
 
     static int max_compressed_size (const int data_size) {
-	return snappy::MaxCompressedLength (data_size);
+	return snappy_max_compressed_length (data_size);
     }
 };
 
