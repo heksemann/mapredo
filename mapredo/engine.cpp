@@ -13,8 +13,8 @@
 
 engine::engine (const std::string& tmpdir,
 		const std::string& subdir,
-		const int parallel,
-		const int bytes_buffer,
+		const size_t parallel,
+		const size_t bytes_buffer,
 		const int max_open_files)
     : _tmpdir (subdir.empty() ? tmpdir : (tmpdir + "/" + subdir)),
       _is_subdir (subdir.size()),
@@ -195,10 +195,10 @@ engine::merge (mapredo::base& mapreducer)
     _files_final_merge.clear();
 }
 
-static unsigned int hash(const char* str, int siz)
+static unsigned int hash(const char* str, size_t siz)
 {
     unsigned int result = 0x55555555;
-    int i;
+    size_t i;
 
     for (i = 0; i < siz && str[i] != '\t'; i++)
     {
@@ -210,7 +210,7 @@ static unsigned int hash(const char* str, int siz)
 
 
 void
-engine::collect (const char* inbuffer, const int insize)
+engine::collect (const char* inbuffer, const size_t insize)
 {
     if (_unprepared)
     {

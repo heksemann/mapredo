@@ -20,8 +20,8 @@ class engine : public mapredo::collector
 public:
     engine (const std::string& tmpdir,
 	    const std::string& subdir,
-	    const int parallel,
-	    const int bytes_buffer,
+	    const size_t parallel,
+	    const size_t bytes_buffer,
 	    const int max_open_files);
     virtual ~engine();
 
@@ -54,7 +54,7 @@ public:
     void reduce (mapredo::base& mapreducer, plugin_loader& loader);
 
     /** Used to collect data, called from mapper */
-    void collect (const char* line, const int length);
+    void collect (const char* line, const size_t length);
 
 private:
     void merge (mapredo::base& mapreducer);

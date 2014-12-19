@@ -54,7 +54,7 @@ public:
 	outbuffer[0] = outbuffer_size & 0xff;
 	outbuffer[1] = (outbuffer_size >> 8) & 0xff;
 	outbuffer[2] = (outbuffer_size >> 16) & 0xff;
-	outbuffer[3] = outbuffer_size >> 24;
+	outbuffer[3] = (outbuffer_size >> 24) & 0xff;
 	outbuffer_size += 4;
     }
 
@@ -111,7 +111,7 @@ public:
 	    ("Can not uncompress corrupted Snappy data");
     }
 
-    static int max_compressed_size (const int data_size) {
+    static size_t max_compressed_size (const size_t data_size) {
 	return snappy_max_compressed_length (data_size);
     }
 };

@@ -44,7 +44,7 @@ public:
     /**
      * Function called by reducer to report output.
      */
-    void collect (const char* line, const int length);
+    void collect (const char* line, const size_t length);
 
     /**
      * @returns a thread exception if it occured or nullptr otherwise
@@ -82,7 +82,7 @@ file_merger::do_merge (const bool to_single_file)
 
     tmpfile_reader_queue queue;
     
-    for (int i = _max_open_files; i > 0 && !_tmpfiles.empty(); i--)
+    for (size_t i = _max_open_files; i > 0 && !_tmpfiles.empty(); i--)
     {
 	std::string& filename = _tmpfiles.front();
 	auto* proc = new tmpfile_reader<T> (filename, 0x100000);
@@ -111,7 +111,7 @@ file_merger::do_merge (const bool to_single_file)
     {
 	if (settings::instance().verbose()) std::cerr << "Last merge\n";
 	mapredo::valuelist<T> list (queue);
-	const T* key;
+	const T* key = nullptr;
 
 	while (!queue.empty()
 	       && (key = (*queue.begin()).second->next_key()))
@@ -124,7 +124,7 @@ file_merger::do_merge (const bool to_single_file)
     {
 	tmpfile_collector collector (_file_prefix, _tmpfile_id);
 	mapredo::valuelist<T> list (queue);
-	const T* key;
+	const T* key = nullptr;
 
 	while (!queue.empty()
 	       && (key = (*queue.begin()).second->next_key()))

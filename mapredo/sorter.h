@@ -48,7 +48,7 @@ private:
     std::list<sorter_buffer> _buffers;
     sorter_buffer* _current = 0;
     const std::string _tmpdir;
-    const int _bytes_per_buffer;
+    const size_t _bytes_per_buffer;
     std::string _file_prefix;
     int _tmpfile_id = 0;
     std::list<std::string> _tmpfiles;

@@ -36,7 +36,7 @@ public:
     bool empty() const {return _buffer_used == 0;}
     void clear() {_buffer_used = _lookup_used = 0;}
 
-    void add (const char* keyvalue, const int totalsize) {
+    void add (const char* keyvalue, const size_t totalsize) {
 	//std::cout << std::string(keyvalue, totalsize);
 	memcpy (&_buffer[_buffer_used], keyvalue, totalsize);
 	_lookup[_lookup_used].set_ptr (&_buffer[_buffer_used]);

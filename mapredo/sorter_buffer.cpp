@@ -9,8 +9,9 @@ sorter_buffer::sorter_buffer(const size_t bytes_available, const double ratio)
 {
     double total_ratio = ratio + 1.0;
 
-    _buffer_size = bytes_available / total_ratio * ratio;
-    _lookup_size = bytes_available / total_ratio / sizeof(struct lookup);
+    _buffer_size = static_cast<size_t> (bytes_available / total_ratio * ratio);
+    _lookup_size = static_cast<size_t> (bytes_available
+					/ total_ratio / sizeof(struct lookup));
     //std::cerr << "b " << _size_buffer << " l " << _size_lookup << "\n";
 
     if (_lookup_size < 1)
@@ -55,8 +56,10 @@ sorter_buffer::tune (const double ratio)
 	double total_ratio = _ratio + 1.0;
 	size_t old_lookup_size = _lookup_size;
 
-	_buffer_size = _bytes_available / total_ratio * _ratio;
-	_lookup_size = _bytes_available / total_ratio / sizeof(struct lookup);
+	_buffer_size = static_cast<size_t> (_bytes_available
+					/ total_ratio * _ratio);
+	_lookup_size = static_cast<size_t> (_bytes_available
+					/ total_ratio / sizeof(struct lookup));
 
 	delete[] _buffer;
         

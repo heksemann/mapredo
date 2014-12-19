@@ -34,7 +34,7 @@ public:
     }
     ~tmpfile_collector() {_outfile.close();}
 
-    void collect (const char* line, const int length)
+    void collect (const char* line, const size_t length)
     {
 	if (_compressed)
 	{

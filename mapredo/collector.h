@@ -13,7 +13,7 @@ namespace mapredo
     class collector
     {
     public:
-	virtual void collect (const char* line, const int length) = 0;
+	virtual void collect (const char* line, const size_t length) = 0;
 	template<typename T1, typename T2>
 	void collect_keyval (const T1& key, const T2& value) {
 	    std::ostringstream stream;

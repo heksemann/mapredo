@@ -111,7 +111,7 @@ file_merger::merge_max_files (const bool to_single_file)
 }
 
 void
-file_merger::collect (const char* line, const int length)
+file_merger::collect (const char* line, const size_t length)
 {
     std::cout << line << "\n";
 }
