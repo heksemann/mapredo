@@ -3,7 +3,7 @@ mapredo
 
 > Mapreducing at the speed of C
 
-#Overview
+## Overview
 
 Mapredo is C++11 based software inspired by Google's famous MapReduce paper.  The main objectives are:
 
@@ -14,4 +14,3 @@ Mapredo is C++11 based software inspired by Google's famous MapReduce paper.  Th
 Some of the limitations are:
 
 - Currently only a single computer/server is supported
--
