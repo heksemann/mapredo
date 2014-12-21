@@ -14,6 +14,7 @@
 #include <mapredo/engine.h>
 #include <mapredo/base.h>
 #include <mapredo/plugin_loader.h>
+#include <mapredo/directory.h>
 
 static double time_since (const std::chrono::high_resolution_clock::time_point& time)
 {
@@ -23,6 +24,7 @@ static double time_since (const std::chrono::high_resolution_clock::time_point& 
 }
 
 static void reduce (const std::string& plugin_file,
+		    const std::string& work_dir,
 		    const std::string& subdir,
 		    const bool verbose,
 		    const int parallel,
@@ -30,6 +32,7 @@ static void reduce (const std::string& plugin_file,
 {
     if (verbose)
     {
+	std::cerr << "Using working directory " << work_dir << "\n";
 	std::cerr << "Using " << parallel << " threads,"
 		  << " with HW concurrency at "
 		  << std::thread::hardware_concurrency()
@@ -38,7 +41,7 @@ static void reduce (const std::string& plugin_file,
 
     plugin_loader plugin (plugin_file);
     auto& mapreducer (plugin.get());
-    engine mapred_engine (TMPDIR, subdir, parallel, 0, max_files);
+    engine mapred_engine (work_dir, subdir, parallel, 0, max_files);
     auto start_time = std::chrono::high_resolution_clock::now();
 
     mapred_engine.reduce (mapreducer, plugin);
@@ -51,6 +54,7 @@ static void reduce (const std::string& plugin_file,
 }
 
 static void run (const std::string& plugin_file,
+		 const std::string& work_dir,
 		 const std::string& subdir,
 		 const bool verbose,
 		 const size_t buffer_size,
@@ -60,7 +64,7 @@ static void run (const std::string& plugin_file,
 {
     plugin_loader plugin (plugin_file);
     auto& mapreducer (plugin.get());
-    engine mapred_engine (TMPDIR, subdir, parallel, buffer_size, max_files);
+    engine mapred_engine (work_dir, subdir, parallel, buffer_size, max_files);
     size_t buf_size = 0x2000;
     std::unique_ptr<char[]> buf (new char[buf_size]);
     size_t start = 0, end = 0;
@@ -88,6 +92,7 @@ static void run (const std::string& plugin_file,
 					  false);
 	    if (verbose)
 	    {
+		std::cerr << "Using working directory " << work_dir << "\n";
 		std::cerr << "Maximum buffer size is " << buffer_size
 			  << " bytes.\nUsing " << parallel << " threads,"
 			  << " with HW concurrency at "
@@ -148,6 +153,11 @@ static void run (const std::string& plugin_file,
     else mapred_engine.flush();
 }
 
+static std::string get_default_workdir()
+{
+    return TMPDIR;
+}
+
 int
 main (int argc, char* argv[])
 {
@@ -157,6 +167,7 @@ main (int argc, char* argv[])
     int verbose = false;
     int compression = true;
     std::string subdir;
+    std::string work_dir = get_default_workdir();
     bool map_only = false;
     bool reduce_only = false;
     bool keep_tmpfiles = false;
@@ -171,6 +182,9 @@ main (int argc, char* argv[])
 	TCLAP::ValueArg<std::string> subdirArg
 	    ("s", "subdir", "Subdirectory to use",
 	     false, "", "string", cmd);
+	TCLAP::ValueArg<std::string> workdirArg
+	    ("d", "work-dir", "Working directory to use",
+	     false, work_dir, "string", cmd);
 	TCLAP::ValueArg<std::string> bufferSizeArg
 	    ("b", "buffer-size", "Buffer size to use",
 	     false, "10M", "size", cmd);
@@ -196,6 +210,7 @@ main (int argc, char* argv[])
 
 	cmd.parse (argc, argv);
 	subdir = subdirArg.getValue();
+	work_dir = workdirArg.getValue();
 	buffer_size = config.parse_size (bufferSizeArg.getValue());
 	max_files = maxFilesArg.getValue();
 	parallel = threadsArg.getValue();
@@ -205,6 +220,12 @@ main (int argc, char* argv[])
 	reduce_only = reduceOnlyArg.getValue();
 	plugin_path = pluginArg.getValue();
 
+	if (!directory::exists(work_dir))
+	{
+	    throw TCLAP::ArgException
+		("The working directory '" + work_dir + "' does not exist",
+		 "work-dir");
+	}
 	if (max_files < 3)
 	{
 	    throw TCLAP::ArgException
@@ -232,7 +253,7 @@ main (int argc, char* argv[])
     }
     catch (const TCLAP::ArgException& e)
     {
-	std::cerr << "error: " << e.error() << " for arg " << e.argId()
+	std::cerr << "error: " << e.error() << " for " << e.argId()
 		  << std::endl;
 	return (1);
     }
@@ -245,12 +266,13 @@ main (int argc, char* argv[])
     {
 	if (reduce_only)
 	{
-	    reduce (plugin_path, subdir, verbose, parallel, max_files);
+	    reduce (plugin_path, work_dir, subdir, verbose, parallel,
+		    max_files);
 	}
 	else
 	{
-	    run (plugin_path, subdir, verbose, buffer_size, parallel,
-		 max_files, map_only);
+	    run (plugin_path, work_dir, subdir, verbose, buffer_size,
+		 parallel, max_files, map_only);
 	}
     }
     catch (const std::exception& e)
