@@ -1,6 +1,6 @@
 AC_INIT([mapredo], [0.1], [mapredo@hextreme.com], [mapredo], [http://hextreme.com/mapredo])
 AC_PREREQ([2.59])
-AM_INIT_AUTOMAKE([1.10 no-define foreign nostdinc silent-rules])
+AM_INIT_AUTOMAKE([1.10 no-define foreign subdir-objects nostdinc silent-rules])
 #AC_CONFIG_HEADERS([config.h])
 AC_PROG_CXX
 AC_LANG([C++])

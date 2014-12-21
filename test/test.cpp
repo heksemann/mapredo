@@ -1,8 +1,6 @@
 
 #include <gtest/gtest.h>
 
-#define PLUGINSDIR "nonexisting"
-
 #include "compression.h"
 #include "directory.h"
 #include "plugin_loader.h"

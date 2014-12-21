@@ -4,22 +4,23 @@
 #define _HEXTREME_MAPREDO_BASE_H
 
 #include "collector.h"
+#include "configuration.h"
 
 namespace mapredo
 {
     class base
     {
     public:
+	virtual ~base() {}
+
+	/** The different datatypes supported for of key sorting */
 	enum keytype
 	{
-	    UNKNOWN,
-	    STRING,
-	    INT64,
-	    DOUBLE
+	    UNKNOWN, /// the type is not set yet
+	    STRING,  /// char*
+	    INT64,   /// 64 bit integer
+	    DOUBLE   /// double precision float
 	};
-
-	base() = default;
-	virtual ~base() {}
 
 	/**
 	 * Map function.
@@ -30,14 +31,40 @@ namespace mapredo
 	virtual void map (char* line, const int length,
 			  collector& output) = 0;
 
-	/*
-	 * Implement this to return true if reduced() can be called  multiple
-	 * times.
+	/**
+	 * Function used to reduce data from mapper.
+	 * @return true if reduced() can be used as a combiner (can be
+	 *              called again on its own output).
 	 */
 	virtual bool reducer_can_combine() const {return false;}
 
-	void set_type (const keytype type) {_type = type;}
+	/** @returns the key datatype for this mapreducer */
 	keytype type() const {return _type;}
+
+	/**
+	 * If configuration arguments are needed for the map-reducer,
+	 * override this function.
+	 * @param args configuration object where the arguments are defined
+	 */
+	virtual void setup_configuration (configuration& args) {}
+
+	/**
+	 * Any pre-processing based on the configuration parameters
+	 * defined in setup_configuration() is done here.  If you just
+	 * need the simple configuration parameters, there is no
+	 * reason to override configure().
+	 */
+	virtual void configure() {}
+
+    protected:
+	base() = default;
+
+	/**
+	 * This function is used by the mapreducer class, and must not
+	 * be called from any inherited class.
+	 * @param type datatype for key
+	 */
+	void set_type (const keytype type) {_type = type;}
 
     private:
 	keytype _type = UNKNOWN;

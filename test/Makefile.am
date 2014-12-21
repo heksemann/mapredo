@@ -1,4 +1,5 @@
-AM_CPPFLAGS = -I$(top_srcdir)/mapredo -fprofile-arcs -ftest-coverage
+AM_CXXFLAGS += -I$(top_srcdir)/mapredo -fprofile-arcs -ftest-coverage \
+	-DPLUGINSDIR=\"../plugins/.libs\"
 
 AM_LDFLAGS = -lgtest -fprofile-arcs -lsnappy -ldl -lpthread
 
@@ -7,5 +8,6 @@ check_PROGRAMS = gtest
 
 gtest_SOURCES = \
 	test.cpp \
+	plugin.cpp \
 	../mapredo/directory.cpp
 
