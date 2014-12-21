@@ -164,8 +164,8 @@ main (int argc, char* argv[])
     int64_t buffer_size = 10 * 1024 * 1024;
     int parallel = std::thread::hardware_concurrency();
     int max_files = 20 * parallel;
-    int verbose = false;
-    int compression = true;
+    bool verbose = false;
+    bool compression = true;
     std::string subdir;
     std::string work_dir = get_default_workdir();
     bool map_only = false;
