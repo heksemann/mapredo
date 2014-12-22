@@ -1,9 +1,13 @@
 
+#ifndef _WIN32
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <libgen.h>
 #include <dlfcn.h>
+#else
+#include <windows.h>
+#endif
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -13,8 +17,14 @@
 #include <mapredo/settings.h>
 #include <mapredo/engine.h>
 #include <mapredo/base.h>
+#ifndef _WIN32
 #include <mapredo/plugin_loader.h>
 #include <mapredo/directory.h>
+#else
+#include <mapredo/plugin_loader_win32.h>
+#include <mapredo/directory_win32.h>
+typedef DWORD ssize_t;
+#endif
 
 static double time_since (const std::chrono::high_resolution_clock::time_point& time)
 {
@@ -74,7 +84,13 @@ static void run (const std::string& plugin_file,
     bool first = true;
     std::chrono::high_resolution_clock::time_point start_time;
 
+#ifdef _WIN32
+    auto STDIN_FILENO = GetStdHandle (STD_INPUT_HANDLE);
+    while ((ReadFile (STDIN_FILENO, buf.get() + end, 
+	    buf_size - end, &bytes, NULL) && bytes > 0))
+#else
     while ((bytes = read(STDIN_FILENO, buf.get() + end, buf_size - end)) > 0)
+#endif
     {
 	end += bytes;
 	if (first)
