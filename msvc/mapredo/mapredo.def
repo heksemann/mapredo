@@ -1,0 +1,11 @@
+LIBRARY MAPREDO
+EXPORTS
+   ?parse_size@settings@@QBE_JABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
+   ??0engine@@QAE@ABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@0IIH@Z
+   ?exists@directory@@SA_NABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
+   ?instance@settings@@SAAAV1@XZ
+   ??1engine@@UAE@XZ
+   ?enable_sorters@engine@@QAEXW4keytype@base@mapredo@@_N@Z
+   ?flush@engine@@QAEXAAVbase@mapredo@@AAVplugin_loader@@@Z
+   ?flush@engine@@QAEXXZ
+   ?reduce@engine@@QAEXAAVbase@mapredo@@AAVplugin_loader@@@Z
