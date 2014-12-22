@@ -1,0 +1,6 @@
+LIBRARY WORDCOUNT
+EXPORTS
+   ?map@wordcount@@UAEXPADHAAVcollector@mapredo@@@Z
+   ?reduce@wordcount@@UAEXV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AAV?$valuelist@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@mapredo@@AAVcollector@5@@Z
+   create
+   destroy

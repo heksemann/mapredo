@@ -1,0 +1,6 @@
+LIBRARY WORDSORT
+EXPORTS
+   ?map@wordsort@@UAEXPADHAAVcollector@mapredo@@@Z
+   ?reduce@wordsort@@UAEX_JAAV?$valuelist@_J@mapredo@@AAVcollector@3@@Z
+   create
+   destroy

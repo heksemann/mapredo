@@ -10,6 +10,18 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "frontend", "frontend\fronte
 		{4DE54F5B-9BC1-409F-B911-DEF6B8FE6A77} = {4DE54F5B-9BC1-409F-B911-DEF6B8FE6A77}
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "plugins", "plugins", "{75B0A5D1-8725-45DA-946D-3E4B086193E1}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wordcount", "wordcount\wordcount.vcxproj", "{84DF23C4-3302-48CC-9745-2B3BB5BA0210}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4DE54F5B-9BC1-409F-B911-DEF6B8FE6A77} = {4DE54F5B-9BC1-409F-B911-DEF6B8FE6A77}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wordsort", "wordsort\wordsort.vcxproj", "{6D7D0005-08A3-42FB-AB3C-54C776AD3FDE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4DE54F5B-9BC1-409F-B911-DEF6B8FE6A77} = {4DE54F5B-9BC1-409F-B911-DEF6B8FE6A77}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -24,8 +36,20 @@ Global
 		{C6AB7DC6-8A60-4D9F-A8C1-D2B32EA2AB9F}.Debug|Win32.Build.0 = Debug|Win32
 		{C6AB7DC6-8A60-4D9F-A8C1-D2B32EA2AB9F}.Release|Win32.ActiveCfg = Release|Win32
 		{C6AB7DC6-8A60-4D9F-A8C1-D2B32EA2AB9F}.Release|Win32.Build.0 = Release|Win32
+		{84DF23C4-3302-48CC-9745-2B3BB5BA0210}.Debug|Win32.ActiveCfg = Debug|Win32
+		{84DF23C4-3302-48CC-9745-2B3BB5BA0210}.Debug|Win32.Build.0 = Debug|Win32
+		{84DF23C4-3302-48CC-9745-2B3BB5BA0210}.Release|Win32.ActiveCfg = Release|Win32
+		{84DF23C4-3302-48CC-9745-2B3BB5BA0210}.Release|Win32.Build.0 = Release|Win32
+		{6D7D0005-08A3-42FB-AB3C-54C776AD3FDE}.Debug|Win32.ActiveCfg = Debug|Win32
+		{6D7D0005-08A3-42FB-AB3C-54C776AD3FDE}.Debug|Win32.Build.0 = Debug|Win32
+		{6D7D0005-08A3-42FB-AB3C-54C776AD3FDE}.Release|Win32.ActiveCfg = Release|Win32
+		{6D7D0005-08A3-42FB-AB3C-54C776AD3FDE}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{84DF23C4-3302-48CC-9745-2B3BB5BA0210} = {75B0A5D1-8725-45DA-946D-3E4B086193E1}
+		{6D7D0005-08A3-42FB-AB3C-54C776AD3FDE} = {75B0A5D1-8725-45DA-946D-3E4B086193E1}
 	EndGlobalSection
 EndGlobal
