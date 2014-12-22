@@ -13,7 +13,7 @@
 #include "collector.h"
 #ifndef _WIN32
 #include "directory.h"
-#include "plugin_loader.h
+#include "plugin_loader.h"
 #else
 #include "directory_win32.h"
 #include "plugin_loader_win32.h"
