@@ -25,10 +25,17 @@ public:
         if (!_outfile)
         {
             char err[80];
-
+#ifdef _WIN32
+	    strerror_s (err, sizeof(err), errno);
+#endif
             throw std::invalid_argument
                 ("Unable to open " + _filename_stream.str() + " for writing: "
-                 + strerror_r (errno, err, sizeof(err)));
+#ifndef _WIN32
+                 + strerror_r (errno, err, sizeof(err))
+#else
+		 + err
+#endif
+		);
         }
 
     }

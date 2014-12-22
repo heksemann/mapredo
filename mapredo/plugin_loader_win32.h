@@ -26,7 +26,7 @@ public:
 	    plugin_path += ".dll";
 	}
 
-	if (!load(plugin_path)
+	if (!load(plugin_path))
 	{
 	    throw std::runtime_error ("Unable to find mapreduce plugin "
 				      + plugin_path);
@@ -80,9 +80,9 @@ private:
     typedef mapredo::base* (*create_t)();
 
     bool load (const std::string& path) {
-	size_t error_msg_size = 1024;
+	const size_t error_msg_size = 1024;
 	TCHAR error_msg[error_msg_size];
-	std::tr2::sys::path loadPath (load_path);
+	std::tr2::sys::path load_path (path);
 
 	if (std::tr2::sys::exists (load_path))
 	{
@@ -120,7 +120,7 @@ private:
 		    NULL);
 		throw std::runtime_error (
 		    std::string("Can not create plugin '" + path + ": ")
-					  + err_msg);
+					  + error_msg);
 	    }
 	    _path = path;
 	    return true;

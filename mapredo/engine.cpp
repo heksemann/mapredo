@@ -1,5 +1,9 @@
 
+#ifndef _WIN32
 #include <unistd.h>
+#else
+#include <io.h>
+#endif
 #include <cctype>
 #include <iostream>
 #include <future>
@@ -7,9 +11,14 @@
 
 #include "engine.h"
 #include "collector.h"
+#ifndef _WIN32
 #include "directory.h"
+#include "plugin_loader.h
+#else
+#include "directory_win32.h"
+#include "plugin_loader_win32.h"
+#endif
 #include "settings.h"
-#include "plugin_loader.h"
 
 engine::engine (const std::string& tmpdir,
 		const std::string& subdir,
@@ -22,7 +31,11 @@ engine::engine (const std::string& tmpdir,
       _bytes_buffer (bytes_buffer),
       _max_files (max_open_files)
 {
+#ifndef _WIN32
     if (access(tmpdir.c_str(), R_OK|W_OK|X_OK) != 0)
+#else
+    if (_access_s(tmpdir.c_str(), 0x06) != 0)
+#endif
     {
 	throw std::runtime_error (tmpdir + " needs to be a writable directory");
     }

@@ -239,10 +239,17 @@ sorter::flush_buffer (sorter_buffer* const buffer)
     if (!tmpfile)
     {
 	char err[80];
-
+#ifdef _WIN32
+	strerror_s (err, sizeof(err), errno);
+#endif
 	throw std::invalid_argument
 	    ("Unable to open " + filename.str() + " for writing: "
-	     + strerror_r (errno, err, sizeof(err)));
+#ifndef _WIN32
+	     + strerror_r (errno, err, sizeof(err))
+#else
+	     + err
+#endif
+	    );
     }
 
     auto end = buffer->lookup().cbegin() + buffer->lookup_used();

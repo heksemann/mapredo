@@ -78,11 +78,6 @@ directory::const_iterator::const_iterator (const std::string& path)
     _dir = std::tr2::sys::directory_iterator (_path);
 }
 
-directory::const_iterator::~const_iterator()
-{
-    if (_dir) closedir (_dir);
-}
-
 const char*
 directory::const_iterator::operator*()
 {

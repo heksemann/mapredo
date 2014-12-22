@@ -66,10 +66,17 @@ tmpfile_reader<T>::tmpfile_reader (const std::string& filename,
     if (!_file)
     {
 	char err[80];
-	
+#ifdef _WIN32
+	strerror_s (err, sizeof(err), errno);
+#endif	
 	throw std::invalid_argument ("Unable to open \"" + filename
 				     + "\" for reading: "
-				     + strerror_r (errno, err, sizeof(err)));
+#ifndef _WIN32
+				     + strerror_r (errno, err, sizeof(err))
+#else
+				     + err
+#endif
+				    );
     }
     
     _file.seekg (0, _file.end);

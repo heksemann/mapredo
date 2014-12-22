@@ -19,7 +19,7 @@ public:
     public:
 	const_iterator (const std::string& path);
 	const_iterator() : _path("") {}
-	~const_iterator();
+	~const_iterator() {};
 	const const_iterator& operator++();
 	bool operator!=(const const_iterator& other) const;
 	const char* operator*();
