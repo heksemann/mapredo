@@ -62,7 +62,7 @@ tmpfile_reader<T>::tmpfile_reader (const std::string& filename,
 				  " buffer for compressed input");
     }
 
-    _file.open (filename);
+    _file.open (filename, std::ifstream::binary);
     if (!_file)
     {
 	char err[80];

@@ -21,7 +21,7 @@ public:
             _coutbuffer.reset (new char[0x15000]);
             _cinbufpos = 0;
 	}
-	_outfile.open (_filename_stream.str());
+	_outfile.open (_filename_stream.str(), std::ofstream::binary);
         if (!_outfile)
         {
             char err[80];

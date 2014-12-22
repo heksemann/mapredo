@@ -235,7 +235,7 @@ sorter::flush_buffer (sorter_buffer* const buffer)
     filename << _file_prefix << _tmpfile_id++;
     if (_compressor.get()) filename << ".snappy";
 
-    tmpfile.open (filename.str());
+    tmpfile.open (filename.str(), std::ofstream::binary);
     if (!tmpfile)
     {
 	char err[80];

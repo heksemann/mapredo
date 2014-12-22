@@ -149,7 +149,7 @@ file_merger::do_merge (const bool to_single_file)
 	    _coutbuffer.reset (new char[0x15000]);
 	    _cinbufpos = 0;
 	}
-	outfile.open (filename.str());
+	outfile.open (filename.str(), std::ofstream::binary);
 	if (!outfile)
 	{
 	    char err[80];
