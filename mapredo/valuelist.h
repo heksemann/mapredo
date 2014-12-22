@@ -13,9 +13,9 @@ namespace mapredo
     template <class T> class valuelist
     {
     public:
-	typedef std::pair<T, tmpfile_reader<T>*> tmpfile_entry;
-	typedef std::multimap<T, tmpfile_reader<T>*>
-	tmpfile_reader_queue;
+	typedef std::pair<T, data_reader<T>*> tmpfile_entry;
+	typedef std::multimap<T, data_reader<T>*>
+	data_reader_queue;
 
 	/**
 	 * Iterator for values to reducer.
@@ -23,7 +23,7 @@ namespace mapredo
 	class iterator
 	{
 	public:
-	    iterator(tmpfile_reader_queue& queue) :
+	    iterator(data_reader_queue& queue) :
 		_queue(&queue), _index(0) {
 		auto* proc = (*_queue->begin()).second;
 
@@ -81,10 +81,8 @@ namespace mapredo
 		}
 		else // file emptied, check next
 		{
-		    std::string filename (proc->filename());
 		    delete proc;
 		    //std::cerr << "Check next, delete " << filename << "\n";
-		    remove (filename.c_str());
 		    _queue->erase (_queue->begin());
 		    if (!_queue->empty()) //  check next
 		    {
@@ -121,13 +119,13 @@ namespace mapredo
 
 	    char* operator*() {return _value;}
 	private:
-	    tmpfile_reader_queue* _queue = nullptr;
+	    data_reader_queue* _queue = nullptr;
 	    int _index = -1;
 	    T _key;
 	    char* _value;
 	};
 
-	valuelist (tmpfile_reader_queue& queue) :
+	valuelist (data_reader_queue& queue) :
 	    _queue (queue) {}
 
 	iterator begin() const {
@@ -144,7 +142,7 @@ namespace mapredo
 	const iterator& end() const {return _end;}
 
     private:
-	tmpfile_reader_queue& _queue;
+	data_reader_queue& _queue;
 	iterator _end;
     };
 }

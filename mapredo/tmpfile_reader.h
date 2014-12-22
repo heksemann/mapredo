@@ -16,11 +16,14 @@ template <class T>
 class tmpfile_reader : public data_reader<T>
 {
 public:
-    tmpfile_reader (const std::string& filename, const int buffer_size);
+    tmpfile_reader (const std::string& filename,
+		    const int buffer_size,
+		    const bool delete_file_after);
     //tmpfile_reader (tmpfile_reader&& other)
     //: _file(std::move(other._file)), _pos(other._pos);
     ~tmpfile_reader() {
 	if (_cbuffer) delete[] _cbuffer;
+	if (_delete_file_after) remove (_filename.c_str());
     }
 
     const std::string& filename() const {return _filename;}
@@ -40,15 +43,18 @@ private:
     char* _cbuffer = nullptr;
     size_t _bytes_left_file;
     int _keylen = 0;
+    bool _delete_file_after;
     std::unique_ptr<compression> _compressor;
 };
 
 template <class T>
 tmpfile_reader<T>::tmpfile_reader (const std::string& filename,
-				   const int buffer_size) :
+				   const int buffer_size,
+				   const bool delete_file_after) :
     _filename (filename),
     _buffer_size (buffer_size - 1),
-    _cbuffer_size (buffer_size)
+    _cbuffer_size (buffer_size),
+    _delete_file_after (delete_file_after)
 {
     if (filename.size() > 7
 	&& filename.substr(filename.size() - 7) == ".snappy")

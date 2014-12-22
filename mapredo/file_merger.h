@@ -77,21 +77,19 @@ private:
 template <typename T> void
 file_merger::do_merge (const bool to_single_file)
 {
-    typedef std::pair<T, tmpfile_reader<T>*> tmpfile_entry;
-    typedef std::multimap<T, tmpfile_reader<T>*> tmpfile_reader_queue;
+    typedef std::pair<T, data_reader<T>*> tmpfile_entry;
+    typedef std::multimap<T, data_reader<T>*> data_reader_queue;
 
-    tmpfile_reader_queue queue;
+    data_reader_queue queue;
     
     for (size_t i = _max_open_files; i > 0 && !_tmpfiles.empty(); i--)
     {
-	std::string& filename = _tmpfiles.front();
-	auto* proc = new tmpfile_reader<T> (filename, 0x100000);
+	const std::string& filename = _tmpfiles.front();
+	auto* proc = new tmpfile_reader<T>
+	    (filename, 0x100000, !settings::instance().keep_tmpfiles());
 	const T* key = proc->next_key();
 
-	if (key)
-	{
-	    queue.insert (std::pair<T,tmpfile_reader<T>*>(*key, proc));
-	}
+	if (key) queue.insert (std::pair<T,data_reader<T>*>(*key, proc));
 	else if (!settings::instance().keep_tmpfiles())
 	{
 	    remove (filename.c_str());
@@ -170,7 +168,7 @@ file_merger::do_merge (const bool to_single_file)
 	while (queue.size() > 1)
 	{
 	    auto* proc = (*queue.begin()).second;
-	    T key (*proc->next_key());
+	    T key (std::move(*proc->next_key()));
 	    const T* next_key;
 	    size_t length;
 
@@ -199,12 +197,7 @@ file_merger::do_merge (const bool to_single_file)
 
 		if (!next_key)
 		{
-		    std::string filename (proc->filename());
 		    delete proc;
-		    if (!settings::instance().keep_tmpfiles())
-		    {
-			remove (filename.c_str());
-		    }
 		    queue.erase (queue.begin());
 		    if (queue.empty()) break;
 		    proc = (*queue.begin()).second;
@@ -213,7 +206,7 @@ file_merger::do_merge (const bool to_single_file)
 
 		if (queue.size() > 1)
 		{
-		    typename tmpfile_reader_queue::const_iterator niter;
+		    typename data_reader_queue::const_iterator niter;
 
 		    niter = queue.begin();
 		    niter++;
