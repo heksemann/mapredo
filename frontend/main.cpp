@@ -26,10 +26,12 @@
 typedef DWORD ssize_t;
 #endif
 
-static double time_since (const std::chrono::high_resolution_clock::time_point& time)
+static double duration (std::chrono::high_resolution_clock::time_point& time)
 {
+    auto now (std::chrono::high_resolution_clock::now());
     auto duration = std::chrono::duration_cast<std::chrono::duration<double>>
-	(std::chrono::high_resolution_clock::now() - time);
+	(now - time);
+    time = now;
     return duration.count();
 }
 
@@ -52,14 +54,14 @@ static void reduce (const std::string& plugin_file,
     plugin_loader plugin (plugin_file);
     auto& mapreducer (plugin.get());
     engine mapred_engine (work_dir, subdir, parallel, 0, max_files);
-    auto start_time = std::chrono::high_resolution_clock::now();
+    auto start_time (std::chrono::high_resolution_clock::now());
 
     mapred_engine.reduce (mapreducer, plugin);
 
     if (verbose)
     {
 	std::cerr << "Merging finished in " << std::fixed
-		  << time_since (start_time) << "s\n";
+		  << duration (start_time) << "s\n";
     }
 }
 
@@ -154,7 +156,7 @@ static void run (const std::string& plugin_file,
     if (verbose)
     {
 	std::cerr << "Sorting finished in " << std::fixed
-		  << time_since (start_time) << "s\n";
+		  << duration (start_time) << "s\n";
     }
 
     if (!map_only)
@@ -163,7 +165,7 @@ static void run (const std::string& plugin_file,
 	if (verbose)
 	{
 	    std::cerr << "Merging finished in " << std::fixed
-		      << time_since (start_time) << "s\n";
+		      << duration (start_time) << "s\n";
 	}
     }
     else mapred_engine.flush();
