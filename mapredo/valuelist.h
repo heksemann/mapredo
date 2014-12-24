@@ -14,8 +14,7 @@ namespace mapredo
     {
     public:
 	typedef std::pair<T, data_reader<T>*> tmpfile_entry;
-	typedef std::multimap<T, data_reader<T>*>
-	data_reader_queue;
+	typedef std::multimap<T, data_reader<T>*> data_reader_queue;
 
 	/**
 	 * Iterator for values to reducer.

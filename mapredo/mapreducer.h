@@ -15,17 +15,6 @@ namespace mapredo
     {
     public:
 	typedef valuelist<T> vlist;
-	enum sortmode
-	{
-	    TEXT,
-	    RTEXT,
-	    INT32,
-	    RINT32,
-	    INT64,
-	    RINT64,
-	    DOUBLE,
-	    RDOUBLE
-	};
 
 	mapreducer (const bool reverse = false) :
 	_reverse(reverse), _numeric(false) {
@@ -37,18 +26,13 @@ namespace mapredo
 	    {
 		set_type (keytype::STRING);
 	    }
-	    if (std::is_same<T,int64_t>::value)
+	    else if (std::is_same<T,int64_t>::value)
 	    {
 		set_type (keytype::INT64);
 	    }
-	    if (std::is_same<T,double>::value)
-	    {
-		set_type (keytype::DOUBLE);
-	    }
+	    else set_type (keytype::DOUBLE);
 	}
 	virtual ~mapreducer() {}
-
-	void sorting (sortmode& from_map, sortmode& from_reduce);
 
 	/**
 	 * Reduce function.
