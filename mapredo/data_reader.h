@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <iostream>
 #include <stdexcept>
+#include <queue>
 
 template <class T> class data_reader
 {
@@ -40,6 +41,23 @@ public:
      * @returns null terminated pointer to next value field or nullptr.
      */
     char* get_next_value();
+
+    /**
+     * This is used to compare data_reader objects in
+     * priority queues.
+     */
+    template <class U> struct drq_compare
+    {
+	/** The key inside the objects pointed to is compared */
+	bool operator()(data_reader<U>* dr1, data_reader<U>* dr2) {
+	    //std::cerr<< *dr1->next_key()<< " vs " << *dr2->next_key() <<"\n";
+	    return *dr1->next_key() > *dr2->next_key();
+	}
+    };
+    /** The priority_queue is used when traversing files during merge */
+    typedef std::priority_queue<data_reader<T>*,
+				std::vector<data_reader<T>*>,
+				drq_compare<T>> queue;
 
 protected:
     data_reader() {

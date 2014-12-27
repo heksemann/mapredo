@@ -77,10 +77,7 @@ private:
 template <typename T> void
 file_merger::do_merge (const bool to_single_file)
 {
-    typedef std::pair<T, data_reader<T>*> tmpfile_entry;
-    typedef std::multimap<T, data_reader<T>*> data_reader_queue;
-
-    data_reader_queue queue;
+    typename data_reader<T>::queue queue;
     
     for (size_t i = _max_open_files; i > 0 && !_tmpfiles.empty(); i--)
     {
@@ -89,7 +86,7 @@ file_merger::do_merge (const bool to_single_file)
 	    (filename, 0x100000, !settings::instance().keep_tmpfiles());
 	const T* key = proc->next_key();
 
-	if (key) queue.insert (std::pair<T,data_reader<T>*>(*key, proc));
+	if (key) queue.push(proc);
 	else if (!settings::instance().keep_tmpfiles())
 	{
 	    remove (filename.c_str());
@@ -111,8 +108,7 @@ file_merger::do_merge (const bool to_single_file)
 	mapredo::valuelist<T> list (queue);
 	const T* key = nullptr;
 
-	while (!queue.empty()
-	       && (key = (*queue.begin()).second->next_key()))
+	while (!queue.empty() && (key = queue.top()->next_key()))
 	{
 	    static_cast<mapredo::mapreducer<T>&>(_reducer).reduce
 		(*key, list, *this);
@@ -124,8 +120,7 @@ file_merger::do_merge (const bool to_single_file)
 	mapredo::valuelist<T> list (queue);
 	const T* key = nullptr;
 
-	while (!queue.empty()
-	       && (key = (*queue.begin()).second->next_key()))
+	while (!queue.empty() && (key = queue.top()->next_key()))
 	{
 	    static_cast<mapredo::mapreducer<T>&>(_reducer).reduce
 		(*key, list, collector);
@@ -133,7 +128,7 @@ file_merger::do_merge (const bool to_single_file)
 	collector.flush();
 	_tmpfiles.push_back (collector.filename());
     }
-    else
+    else // no reduction
     {
 	std::ofstream outfile;
 	std::ostringstream filename;
@@ -165,69 +160,63 @@ file_merger::do_merge (const bool to_single_file)
 	}
 	_tmpfiles.push_back (filename.str());
 
-	while (queue.size() > 1)
+	auto* proc = queue.top();
+	queue.pop();
+	T key (std::move(*proc->next_key()));
+	const T* next_key;
+	const T* prev_key;
+	size_t length;
+
+	for(;;)
 	{
-	    auto* proc = (*queue.begin()).second;
-	    T key (std::move(*proc->next_key()));
-	    const T* next_key;
-	    size_t length;
-
-	    for(;;)
+	    while ((next_key = proc->next_key())
+		   && (key == *next_key || queue.empty()))
 	    {
-		while ((next_key = proc->next_key()) && key == *next_key)
+		auto line = proc->get_next_line (length);
+		if (compressed)
 		{
-		    auto line = proc->get_next_line (length);
-		    if (compressed)
+		    if (_cinbufpos + length > 0x10000)
 		    {
-			if (_cinbufpos + length > 0x10000)
-			{
-			    _coutbufpos = 0x15000;
-			    _compressor->compress (_cinbuffer.get(),
-						   _cinbufpos,
-						   _coutbuffer.get(),
-						   _coutbufpos);
-			    outfile.write (_coutbuffer.get(), _coutbufpos);
-			    _cinbufpos = 0;
-			}
-			memcpy (_cinbuffer.get() + _cinbufpos, line, length);
-			_cinbufpos += length;
+			_coutbufpos = 0x15000;
+			_compressor->compress (_cinbuffer.get(),
+					       _cinbufpos,
+					       _coutbuffer.get(),
+					       _coutbufpos);
+			outfile.write (_coutbuffer.get(), _coutbufpos);
+			_cinbufpos = 0;
 		    }
-		    else outfile.write (line, length);
+		    memcpy (_cinbuffer.get() + _cinbufpos, line, length);
+		    _cinbufpos += length;
 		}
-
-		if (!next_key)
-		{
-		    delete proc;
-		    queue.erase (queue.begin());
-		    if (queue.empty()) break;
-		    proc = (*queue.begin()).second;
-		    continue;
-		}
-
-		if (queue.size() > 1)
-		{
-		    typename data_reader_queue::const_iterator niter;
-
-		    niter = queue.begin();
-		    niter++;
-
-		    if (niter->first == key)
-		    {
-			queue.erase (queue.begin());
-			queue.insert (tmpfile_entry(*next_key, proc));
-			proc = (*queue.begin()).second;
-		    }
-		    else if (*next_key > niter->first)
-		    {
-			queue.erase (queue.begin());
-			queue.insert (tmpfile_entry(*next_key, proc));
-			key = niter->first;
-			proc = (*queue.begin()).second;
-		    }
-		    else key = *next_key;
-		}
-		else key = *next_key;
+		else outfile.write (line, length);
 	    }
+
+	    if (next_key) prev_key = next_key;
+	    else
+	    {
+		delete proc;
+		if (queue.empty()) break;
+		proc = queue.top();
+		queue.pop();
+		key = std::move (*proc->next_key());
+		continue;
+	    }
+
+	    next_key = queue.top()->next_key();
+	    if (*next_key == key)
+	    {
+		queue.push (proc);
+		proc = queue.top();
+		queue.pop();
+	    }
+	    else if (*prev_key > *next_key)
+	    {
+		queue.push (proc);
+		proc = queue.top();
+		queue.pop();
+		key = std::move (*proc->next_key());
+	    }
+	    else key = std::move (*prev_key);
 	}
 
 	outfile.close();
