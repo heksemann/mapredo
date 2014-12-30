@@ -19,23 +19,21 @@ namespace mapredo
 	class iterator
 	{
 	public:
-	    iterator(typename data_reader<T>::queue& queue) :
-		_queue(&queue), _index(0) {
+	    iterator (typename data_reader<T>::queue& queue, const T key) :
+		_queue(&queue), _index(0), _key(key) {
 		auto* proc = queue.top();
-		_key = *proc->next_key();
 		_value = proc->get_next_value();
 		//std::cerr << "F " << _key << '\n';
 	    }
 	    iterator () {} // for end
-	
+
 	    const iterator& operator++() {
 		auto* proc = _queue->top();
-		const T* next_key = proc->next_key();
 
-		if (next_key)
+		if (proc->next_key())
 		{
-		    //std::cerr << "N " << *next_key << "\n";
-		    if (*next_key == _key)
+		    //std::cerr << "N " << std::string(*proc->next_key(), 3) << "\n";
+		    if (*proc == _key)
 		    {
 			//std::cerr << "V0\n";
 			_value = proc->get_next_value();
@@ -48,7 +46,7 @@ namespace mapredo
 			_queue->pop();
 			auto* nproc = _queue->top();
 			//std::cerr << "NF " << *nproc->next_key() << '\n';
-			if (*nproc->next_key() == _key)
+			if (*nproc == _key)
 			{
 			    //std::cerr << "V1\n";
 			    _value = nproc->get_next_value();
@@ -71,7 +69,7 @@ namespace mapredo
 			if (proc->next_key())
 			{
 			    //std::cerr << "NF2 " << *proc->next_key() << '\n';
-			    if (*proc->next_key() == _key)
+			    if (*proc == _key)
 			    {
 				//std::cerr << "V2\n";
 				_value = proc->get_next_value();
@@ -105,22 +103,18 @@ namespace mapredo
 	valuelist (typename data_reader<T>::queue& queue) :
 	    _queue (queue) {}
 
-	iterator begin() const {
-	    if (!_queue.empty())
-	    {
-		auto* proc = _queue.top();
-		const T* key (proc->next_key());
+	void set_key (T key) { _key = key;}
 
-		if (key) return iterator(_queue);
-		else return iterator();
-	    }
-	    else return iterator();
+	iterator begin() const {
+	    return iterator (_queue, _key);
 	}
 	const iterator& end() const {return _end;}
 
     private:
+
 	typename data_reader<T>::queue& _queue;
 	iterator _end;
+	T _key;
     };
 }
 

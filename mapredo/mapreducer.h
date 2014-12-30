@@ -18,11 +18,11 @@ namespace mapredo
 
 	mapreducer (const bool reverse = false) :
 	_reverse(reverse), _numeric(false) {
-	    static_assert (std::is_same<T,std::string>::value
+	    static_assert (std::is_same<T,char*>::value
 			   || std::is_same<T,int64_t>::value
 			   || std::is_same<T,double>::value,
-			   "Key needs to be string, int64_t or double");
-	    if (std::is_same<T,std::string>::value)
+			   "Key needs to be char*, int64_t or double");
+	    if (std::is_same<T,char*>::value)
 	    {
 		set_type (keytype::STRING);
 	    }

@@ -89,7 +89,7 @@ file_merger::merge_max_files (const bool to_single_file)
     {
     case mapredo::base::keytype::STRING:
     {
-	do_merge<std::string> (to_single_file);
+	do_merge<char*> (to_single_file);
 	break;
     }
     case mapredo::base::keytype::DOUBLE:

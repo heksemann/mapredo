@@ -33,8 +33,7 @@ wordcount::map (char* line, const int length, mapredo::collector& output)
 }
 
 void
-wordcount::reduce (std::string key, vlist& values,
-		   mapredo::collector& output)
+wordcount::reduce (char* key, vlist& values, mapredo::collector& output)
 {
     int count = 0;
 

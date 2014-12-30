@@ -8,14 +8,13 @@
 /**
  * Class used to count and sort words on popularity.
  */
-class wordcount : public mapredo::mapreducer<std::string>
+class wordcount : public mapredo::mapreducer<char*>
 {
 public:
     wordcount() {}
     virtual ~wordcount() {}
     void map (char* line, const int length, mapredo::collector& output);
-    void reduce (std::string key, vlist& values,
-		 mapredo::collector& output);
+    void reduce (char* key, vlist& values, mapredo::collector& output);
     bool reducer_can_combine() const {return true;}
 
 private:    

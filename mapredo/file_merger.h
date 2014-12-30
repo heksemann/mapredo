@@ -106,24 +106,26 @@ file_merger::do_merge (const bool to_single_file)
     {
 	if (settings::instance().verbose()) std::cerr << "Last merge\n";
 	mapredo::valuelist<T> list (queue);
-	const T* key = nullptr;
 
-	while (!queue.empty() && (key = queue.top()->next_key()))
+	while (!queue.empty())
 	{
+	    T key (queue.top()->get_key_copy());
+	    list.set_key (key);
 	    static_cast<mapredo::mapreducer<T>&>(_reducer).reduce
-		(*key, list, *this);
+		(key, list, *this);
 	}
     }
     else if (_reducer.reducer_can_combine())
     {
 	tmpfile_collector collector (_file_prefix, _tmpfile_id);
 	mapredo::valuelist<T> list (queue);
-	const T* key = nullptr;
 
-	while (!queue.empty() && (key = queue.top()->next_key()))
+	while (!queue.empty())
 	{
+	    T key (queue.top()->get_key_copy());
+	    list.set_key (key);
 	    static_cast<mapredo::mapreducer<T>&>(_reducer).reduce
-		(*key, list, collector);
+		(key, list, collector);
 	}
 	collector.flush();
 	_tmpfiles.push_back (collector.filename());
@@ -162,15 +164,14 @@ file_merger::do_merge (const bool to_single_file)
 
 	auto* proc = queue.top();
 	queue.pop();
-	T key (std::move(*proc->next_key()));
+	T key (proc->get_key_copy());
 	const T* next_key;
-	const T* prev_key;
 	size_t length;
 
 	for(;;)
 	{
 	    while ((next_key = proc->next_key())
-		   && (key == *next_key || queue.empty()))
+		   && (*proc == key || queue.empty()))
 	    {
 		auto line = proc->get_next_line (length);
 		if (compressed)
@@ -191,32 +192,33 @@ file_merger::do_merge (const bool to_single_file)
 		else outfile.write (line, length);
 	    }
 
-	    if (next_key) prev_key = next_key;
-	    else
+	    if (!next_key) // file emptied
 	    {
 		delete proc;
 		if (queue.empty()) break;
 		proc = queue.top();
 		queue.pop();
-		key = std::move (*proc->next_key());
+		key = proc->get_key_copy();
 		continue;
 	    }
 
-	    next_key = queue.top()->next_key();
-	    if (*next_key == key)
+	    auto* nproc = queue.top();
+	    int cmp = proc->compare (*nproc);
+    
+	    if (cmp == 0)
 	    {
-		queue.push (proc);
-		proc = queue.top();
 		queue.pop();
+		queue.push (proc);
+		proc = nproc;
 	    }
-	    else if (*prev_key > *next_key)
+	    else if (cmp > 0)
 	    {
-		queue.push (proc);
-		proc = queue.top();
 		queue.pop();
-		key = std::move (*proc->next_key());
+		queue.push (proc);
+		proc = nproc;
+		key = nproc->get_key_copy();
 	    }
-	    else key = std::move (*prev_key);
+	    else key = proc->get_key_copy();
 	}
 
 	outfile.close();
