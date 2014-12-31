@@ -32,10 +32,9 @@ namespace mapredo
 
 		if (proc->next_key())
 		{
-		    //std::cerr << "N " << std::string(*proc->next_key(), 3) << "\n";
+		    //std::cerr << "N " << *proc->next_key() << "\n";
 		    if (*proc == _key)
 		    {
-			//std::cerr << "V0\n";
 			_value = proc->get_next_value();
 			//std::cerr << "V0:" << _value << "\n";
 			++_index;
@@ -48,7 +47,6 @@ namespace mapredo
 			//std::cerr << "NF " << *nproc->next_key() << '\n';
 			if (*nproc == _key)
 			{
-			    //std::cerr << "V1\n";
 			    _value = nproc->get_next_value();
 			    //std::cerr << "V1:" << _value << "\n";
 			    _queue->push (proc);

@@ -42,7 +42,6 @@ private:
     size_t _cbuffer_size;
     char* _cbuffer = nullptr;
     size_t _bytes_left_file;
-    int _keylen = 0;
     bool _delete_file_after;
     std::unique_ptr<compression> _compressor;
 };
@@ -102,7 +101,7 @@ tmpfile_reader<T>::tmpfile_reader (const std::string& filename,
 	this->_buffer[buffer_size - 1] = '\0';
     }
 
-    this->fill_next_key();
+    this->fill_next_line();
 }
 
 template <class T> bool

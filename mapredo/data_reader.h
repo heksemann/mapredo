@@ -23,7 +23,7 @@ public:
 	if (_keylen > 0) return &_key;
 	if (_keylen == 0)
 	{
-	    fill_next_key();
+	    fill_next_line();
 	    if (_keylen > 0) return &_key;
 	}
 	return nullptr;
@@ -74,8 +74,8 @@ public:
 		 typename std::enable_if<std::is_same<V,char*>::value,
 					 bool>::type* = nullptr>
 	bool operator()(data_reader<U>* dr1, data_reader<U>* dr2) {
-	    //std::cerr<< *dr1->next_key()<< " vs " << *dr2->next_key() <<"\n";
-	    return strcmp (*dr1->next_key(), *dr2->next_key());
+	    //std::cerr<<'"'<< *dr1->next_key()<< "\" vs \"" << *dr2->next_key() << ": " << strcmp (*dr1->next_key(), *dr2->next_key()) << "\"\n";
+	    return strcmp (*dr1->next_key(), *dr2->next_key()) > 0;
 	}
     };
     /** The priority_queue is used when traversing files during merge */
@@ -97,14 +97,7 @@ public:
 				     bool>::type* = nullptr>
     bool operator==(const char* const key) {
 	if (!next_key()) return false;
-	
-	int i;
-	//std::cerr << "Comparing '" << _key << "' vs '" << key << "'\n";
-	for (i = 0; i < _keylen && key[i] != '\0'; i++)
-	{
-	    if (_key[i] != key[i]) return false;
-	}
-	return i == _keylen && key[i] == '\0';
+	return strcmp (_key, key) == 0;
     }
 
     /** Comparison with other object, used when traversing files during merge */
@@ -112,9 +105,7 @@ public:
 	     typename std::enable_if<std::is_fundamental<U>::value>::type*
 	     = nullptr>
     int compare (const data_reader& other) {
-	if (_key == other._key) return 0;
-	if (_key < other._key) return -1;
-	return 1;
+	return _key - other._key;
     }
     
     /** Comparison with other object, used when traversing files during merge */
@@ -133,17 +124,15 @@ protected:
                        "Only char*, int64_t and double keys are supported");
     }
 
-    /** Prepare next key from buffer */
-    void fill_next_key();
+    /** Prepare next line from buffer */
+    void fill_next_line();
 
     /** Override this if the data source can provide more data. */
     virtual bool read_more() {return false;}
 
-    T _key;
     char* _buffer = nullptr;
     size_t _start_pos = 0;
     size_t _end_pos = 0;
-    int _keylen = 0;
 
 private:
     template<class U = T,
@@ -196,118 +185,102 @@ private:
 	return _key_copy;
     }
 
+    T _key;
+    int _keylen = 0;
+    int _totallen = 0;
     T _key_copy;
     int _alloclen = 0;
 };
 
 template <class T> void
-data_reader<T>::fill_next_key()
+data_reader<T>::fill_next_line()
 {
-    if (_start_pos == _end_pos && !read_more())
-    {
-	_keylen = -1;
-	return;
-    }
+    _keylen = _totallen = -1;
+    if (_start_pos == _end_pos && !read_more()) return;
 
     size_t i;
 
     for (i = _start_pos; i < _end_pos; i++)
     {
-	if (_buffer[i] == '\t' || _buffer[i] == '\n') break;
+	if (_keylen < 0 && _buffer[i] == '\t')
+	{
+	    _keylen = i - _start_pos;
+	    _buffer[i] = '\0';
+	    set_key (_key, _buffer + _start_pos);
+	    break;
+	}
+	else if (_buffer[i] == '\n') break;
+    }
+    for (; i < _end_pos; i++)
+    {
+	if (_buffer[i] == '\n')
+	{
+	    _totallen = i - _start_pos;
+	    if (_keylen < 0)
+	    {
+		_keylen = _totallen;
+		_buffer[i] = '\0';
+		set_key (_key, _buffer + _start_pos);
+	    }
+	    return;
+	}
+    }
+
+    if (!read_more())
+    {
+	throw std::runtime_error
+	    ("Temporary data does not contain newlines or tabs");
+    }
+	
+    for (i = _start_pos; i < _end_pos; i++)
+    {
+	if (_keylen < 0 && _buffer[i] == '\t')
+	{
+	    _keylen = i - _start_pos;
+	    _buffer[i] = '\0';
+	    set_key (_key, _buffer + _start_pos);
+	}
+	else if (_buffer[i] == '\n')
+	{
+	    _totallen = i - _start_pos;
+	    if (_keylen < 0)
+	    {
+		_keylen = _totallen;
+		_buffer[i] = '\0';
+		set_key (_key, _buffer + _start_pos);
+	    }
+	    return;
+	}
     }
 
     if (i == _end_pos)
     {
-	if (!read_more())
-	{
-	    throw std::runtime_error
-		("Temporary data does not contain newlines or tabs");
-	}
-	
-	for (i = _start_pos; i < _end_pos; i++)
-	{
-	    if (_buffer[i] == '\t' || _buffer[i] == '\n') break;
-	}
-
-	if (i == _end_pos)
-	{
-	    throw std::runtime_error
-		("Temporary data does not contain newlines or tabs");
-	}
+	throw std::runtime_error
+	    ("Temporary file does not contain trailing newline");
     }
-
-    _keylen = i - _start_pos;
-    set_key (_key, _buffer + _start_pos);
 }
 
 template <class T> char*
 data_reader<T>::get_next_value()
 {
-    if (_keylen == 0)
+    if (_keylen <= 0)
     {
 	throw std::runtime_error ("Programming error, keylen is zero in "
 				  + std::string(__FUNCTION__) + "()");
     }
 
-    size_t i;
-
-    for (i = _start_pos + _keylen; i < _end_pos; i++)
+    if (_keylen == _totallen)
     {
-	//std::cout << "Char: '" << _buffer[i] << "'\n";
-	if (_buffer[i] == '\n')
-	{
-	    char* value (_buffer + _start_pos + _keylen);
-
-	    if (*value == '\t') value++;
-	    _buffer[i] = '\0';
-	    _start_pos = i + 1;
-	    _keylen = 0;
-	    return value;
-	}
-    }
-    i -= _start_pos;
-
-    if (!read_more())
-    {
-	char* value;
-
-	// Premature ending, no newline
-	std::cerr << "Premature ending, no newline\n";
-	if (_buffer[_start_pos + _keylen] == '\n')
-	{
-	    value = _buffer + _start_pos + _keylen + 1;
-	    _buffer[_end_pos] = '\0';
-	}
-	else value = const_cast<char*>("");
-
-	_keylen = -1;
+	char *value (_buffer + _start_pos + _keylen);
+	_start_pos += _keylen + 1;
+	_keylen = 0;
 	return value;
     }
 
-    for (; i < _end_pos; i++)
-    {
-	//std::cerr << "Char: '" << _buffer[i] << "'\n";
-	if (_buffer[i] == '\n')
-	{
-	    char* value (_buffer + _start_pos + _keylen);
-
-	    if (*value == '\t') value++;
-	    _buffer[i] = '\0';
-	    _start_pos = i + 1;
-	    _keylen = 0;
-	    return value;
-	}
-    }
-
-    char* value;
-
-    if (_buffer[_start_pos + _keylen] == '\n')
-    {
-	value = _buffer + _start_pos + _keylen + 1;
-	_buffer[_end_pos] = '\0';
-    }
-    else value = const_cast<char*>("");
-
+    char *value (_buffer + _start_pos + _keylen + 1);
+    _start_pos += _totallen;
+    _buffer[_start_pos] = '\0';
+    _start_pos++;
     _keylen = 0;
     return value;
 }
@@ -315,46 +288,17 @@ data_reader<T>::get_next_value()
 template <class T> const char*
 data_reader<T>::get_next_line (size_t& length)
 {
-    size_t i;
-
-    for (i = _start_pos + _keylen; i < _end_pos; i++)
+    if (_keylen <= 0)
     {
-	//std::cout << "Char: " << _buffer[i] << "\n";
-	if (_buffer[i] == '\n')
-	{
-	    char* line (_buffer + _start_pos);
-
-	    length = i - _start_pos + 1;
-	    _start_pos = i + 1;
-	    _keylen = 0;
-	    return line;
-	}
-    }
-    i -= _start_pos;
-
-    if (!read_more())
-    {
-	length = _end_pos - _start_pos;
-	_keylen = -1;
-	return _buffer + _start_pos;
+	throw std::runtime_error ("Programming error, keylen is zero in "
+				  + std::string(__FUNCTION__) + "()");
     }
 
-    for (; i < _end_pos; i++)
-    {
-	//std::cout << "Char: " << _buffer[i] << "\n";
-	if (_buffer[i] == '\n')
-	{
-	    char* line (_buffer + _start_pos);
-	    
-	    length = i - _start_pos + 1;
-	    _start_pos = i + 1;
-	    _keylen = 0;
-	    return line;
-	}
-    }
-
-    length = _end_pos - _start_pos;
+    _buffer[_start_pos + _keylen] = '\t';
+    _buffer[_start_pos + _totallen] = '\n';
+    length = _totallen;
     _keylen = 0;
+
     return _buffer + _start_pos;
 }
 
