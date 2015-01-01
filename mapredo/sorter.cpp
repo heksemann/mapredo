@@ -46,6 +46,7 @@ sorter::sorter (sorter&& other) :
     _tmpdir (std::move(other._tmpdir)),
     _bytes_per_buffer (other._bytes_per_buffer),
     _file_prefix (std::move(other._file_prefix)),
+    _compressor (std::move(other._compressor)),
     _type (other._type),
     _reverse (other._reverse)
 {}

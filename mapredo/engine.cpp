@@ -54,8 +54,8 @@ engine::enable_sorters (const mapredo::base::keytype type, const bool reverse)
 
     for (size_t i = 0; i < _parallel; i++)
     {
-	_sorters.push_back (sorter(_tmpdir, i, _bytes_buffer/_parallel,
-				   type, reverse));
+	_sorters.emplace_back (_tmpdir, i, _bytes_buffer/_parallel, type,
+			       reverse);
     }
     _unprepared = false;
 }

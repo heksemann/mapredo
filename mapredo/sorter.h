@@ -35,11 +35,12 @@ public:
      */
     std::list<std::string> grab_tmpfiles();
 
-    sorter (sorter&& other);
-    sorter (const sorter&) = delete;
-
     void flush();
     void wait_flushed();
+
+    sorter (sorter&& other);
+
+    sorter (const sorter&) = delete;
 
 private:
     std::string flush_buffer_safe (sorter_buffer* const buffer);
