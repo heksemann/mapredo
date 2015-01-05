@@ -14,3 +14,11 @@ Mapredo is C++11 based software inspired by Google's famous MapReduce paper.  Th
 Some of the limitations are:
 
 - Currently only a single computer/server is supported
+
+### Mini Howto
+
+    wget http://www.gutenberg.org/cache/epub/100/pg100.txt
+    cat pg100.txt | mapredo wordcount
+    
+
+
