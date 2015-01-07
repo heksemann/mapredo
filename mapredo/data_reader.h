@@ -74,7 +74,6 @@ public:
 		 typename std::enable_if<std::is_same<V,char*>::value,
 					 bool>::type* = nullptr>
 	bool operator()(data_reader<U>* dr1, data_reader<U>* dr2) {
-	    //std::cerr<<'"'<< *dr1->next_key()<< "\" vs \"" << *dr2->next_key() << ": " << strcmp (*dr1->next_key(), *dr2->next_key()) << "\"\n";
 	    return strcmp (*dr1->next_key(), *dr2->next_key()) > 0;
 	}
     };
@@ -170,7 +169,7 @@ private:
 	    if (_alloclen > 0)
 	    {
 		delete[] _key_copy;
-		do _keylen *= 2;
+		do _alloclen *= 2;
 		while (_alloclen < _keylen);
 	    }
 	    else
