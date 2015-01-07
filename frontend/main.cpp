@@ -215,7 +215,7 @@ main (int argc, char* argv[])
 	TCLAP::SwitchArg verboseArg
 	    ("", "verbose", "Verbose output", cmd, false);
 	TCLAP::SwitchArg noCompressionArg
-	    ("", "no-compression", "Disable compression", cmd, false);
+	    ("", "no-compression", "Disable compression", cmd, true);
 	TCLAP::SwitchArg keepFilesArg
 	    ("", "keep-tmpfiles", "Keep the temporary files after completion",
 	     cmd, false);
@@ -237,6 +237,7 @@ main (int argc, char* argv[])
 	map_only = mapOnlyArg.getValue();
 	reduce_only = reduceOnlyArg.getValue();
 	plugin_path = pluginArg.getValue();
+	compression = noCompressionArg.getValue();
 
 	if (!directory::exists(work_dir))
 	{
