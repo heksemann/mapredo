@@ -5,15 +5,18 @@ mapredo
 
 ### Overview
 
-Mapredo is C++11 based software inspired by Google's famous MapReduce paper.  The main objectives are:
+Mapredo is C++11 based software inspired by Google's famous MapReduce paper.  Some of the features are:
 
-- Speed
-- Ease of use
-- Flexibility
+- Speedy, does word count of the collected works of Shakespeare in <.30s on a 2010 i5 gen 1 laptop
+- Easy to use, can be pipelined and used with command line tools
+- Compression support (snappy)
+- Supports modern Linux distros (gcc) and Windows (Visual Studio)
 
 Some of the limitations are:
 
-- Currently only a single computer/server is supported
+- Currently only a single computer/server can be utilized.
+- Can not yet be natively embedded into other processing frameworks.
+- Not tested on under UNIX like systems, including OS X.
 
 ### Mini-HOWTO
 
