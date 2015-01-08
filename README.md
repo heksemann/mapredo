@@ -16,7 +16,7 @@ Some of the limitations are:
 
 - Currently only a single computer/server can be utilized.
 - Can not yet be natively embedded into other processing frameworks.
-- Not tested on under UNIX like systems, including OS X.
+- Not tested on other UNIX like systems, including OS X.
 
 ### Mini-HOWTO
 
