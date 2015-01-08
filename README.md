@@ -11,7 +11,7 @@ Mapredo is C++11 based software inspired by Google's famous MapReduce paper.  So
 - Easy to use, can be pipelined and used with command line tools
 - Compression support (snappy)
 - Supports modern Linux distros (gcc) and Windows (Visual Studio)
-- Does not require and configuration, just install and run
+- Does not require any configuration, just install and run
 
 Some of the limitations are:
 
