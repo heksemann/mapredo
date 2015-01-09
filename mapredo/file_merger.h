@@ -203,7 +203,7 @@ file_merger::do_merge (const bool to_single_file)
 	    }
 
 	    auto* nproc = queue.top();
-	    int cmp = proc->compare (*nproc);
+	    int cmp = nproc->compare (key);
     
 	    if (cmp == 0)
 	    {

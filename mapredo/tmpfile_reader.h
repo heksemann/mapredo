@@ -111,7 +111,7 @@ tmpfile_reader<T>::read_more()
 
 #if 0
     std::cerr << "Reading more: " << _bytes_left_file << " bytes left"
-	      << " start " << _start_pos << " end " << _end_pos
+	      << " start " << this->_start_pos << " end " << this->_end_pos
 	      << " cstart "<< _cstart_pos << " cend " << _cend_pos
 	      << "\n";
 #endif
@@ -156,7 +156,7 @@ tmpfile_reader<T>::read_more()
 	    else _cstart_pos = _cend_pos = 0;
 
 	    size_t bytes_to_read = std::min<size_t> (_bytes_left_file,
-					     _cbuffer_size - _cend_pos);
+						     _cbuffer_size - _cend_pos);
 	    _file.read (_cbuffer + _cend_pos, bytes_to_read);
 	    if (!_file)
 	    {

@@ -103,16 +103,16 @@ public:
     template<class U = T,
 	     typename std::enable_if<std::is_fundamental<U>::value>::type*
 	     = nullptr>
-    int compare (const data_reader& other) {
-	return _key - other._key;
+    int compare (const T& other_key) {
+	return _key - other_key;
     }
     
     /** Comparison with other object, used when traversing files during merge */
     template<class U = T,
 	     typename std::enable_if<std::is_same<U,char*>::value,
 				     bool>::type* = nullptr>
-    int compare (const data_reader& other) {
-	return strcmp (_key, other._key);
+    int compare (const char* const other_key) {
+	return strcmp (_key, other_key);
     }
     
 protected:
@@ -293,12 +293,15 @@ data_reader<T>::get_next_line (size_t& length)
 				  + std::string(__FUNCTION__) + "()");
     }
 
-    _buffer[_start_pos + _keylen] = '\t';
-    _buffer[_start_pos + _totallen] = '\n';
-    length = _totallen;
+    char* line = _buffer + _start_pos;
+
+    line[_keylen] = '\t';
+    line[_totallen] = '\n';
+    length = ++_totallen;
+    _start_pos += _totallen;
     _keylen = 0;
 
-    return _buffer + _start_pos;
+    return line;
 }
 
 #endif
