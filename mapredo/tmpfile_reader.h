@@ -184,7 +184,7 @@ tmpfile_reader<T>::read_more()
     }
 
     size_t bytes_to_read = std::min<size_t> (_bytes_left_file,
-				      _buffer_size - this->_end_pos);
+					     _buffer_size - this->_end_pos);
 
     //std::cerr << "Have " << _end_pos << " bytes, reading " << bytes_to_read
     //<< " more\n";

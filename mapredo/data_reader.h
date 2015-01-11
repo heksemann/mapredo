@@ -16,7 +16,9 @@ public:
     }
 
     /**
-     * Peek at the next key from the data source.
+     * Peek at the next key from the data source.  This function may
+     * be called multiple times and it will return the same pointer
+     * until get_next_value or get_next_line() is called.
      * @returns pointer to next key if there is more data, nullptr otherwise
      */
     const T* next_key() {
@@ -30,14 +32,16 @@ public:
     }
 
     /**
-     * Get the next value, null terminated.  Remember to call
-     * next_key() before calling this function.
+     * Get the next value.  Remember to call next_key() before calling
+     * this function.
      * @returns null terminated pointer to next value field or nullptr.
      */
     char* get_next_value();
 
     /**
-     * Get the next line (keyvalue) from the file.
+     * Get the next line (key-value pair) from the file.  The line is
+     * not nul-terminated.  Remember to call next_key() before calling
+     * this function.
      * @param size set to the size of the keyvalue field.
      * @returns pointer to next keyvalue field or nullptr.
      */
@@ -52,12 +56,12 @@ public:
 	const T* key (next_key());
 
 	if (key) return prepare_key_copy (*key);
-	else throw std::runtime_error ("get_key_copy() without next_key()");
+	else throw std::runtime_error
+		 ("get_key_copy() called without prior next_key() call");
     }
 
     /**
-     * This is used to compare data_reader objects in
-     * priority queues.
+     * This is used to compare data_reader objects in priority queues.
      */
     template <class U> struct drq_compare
     {
@@ -137,22 +141,22 @@ private:
     template<class U = T,
 	     typename std::enable_if<std::is_floating_point<U>::value>::type*
 	     = nullptr>
-    void set_key (T& key, const char* const buf) {
-	key = atof (buf);
+    void set_key (const char* const buf) {
+	_key = atof (buf);
     }
 
     template<class U = T,
 	     typename std::enable_if<std::is_integral<U>::value>::type*
 	     = nullptr>
-    void set_key (T& key, const char* const buf) {
-	key = atol (buf);
+    void set_key (const char* const buf) {
+	_key = atol (buf);
     }
 
     template<class U = T,
 	     typename std::enable_if<std::is_same<U,char*>::value,
 				     bool>::type* = nullptr>
-    void set_key (char*& key, char* const buf) {
-	key = buf;
+    void set_key (char* const buf) {
+	_key = buf;
     }
 
     template<class U = T,
@@ -170,17 +174,16 @@ private:
 	    {
 		delete[] _key_copy;
 		do _alloclen *= 2;
-		while (_alloclen < _keylen);
+		while (_keylen >= _alloclen);
 	    }
 	    else
 	    {
 		_alloclen = 128;
-		while (_alloclen < _keylen) _alloclen *= 2;
+		while (_keylen >=_alloclen) _alloclen *= 2;
 	    }
 	    _key_copy = new char[_alloclen];
 	}
-	memcpy (_key_copy, _key, _keylen);
-	_key_copy[_keylen] = '\0';
+	memcpy (_key_copy, _key, _keylen + 1);
 	return _key_copy;
     }
 
@@ -199,13 +202,14 @@ data_reader<T>::fill_next_line()
 
     size_t i;
 
+    set_key (_buffer + _start_pos);
+
     for (i = _start_pos; i < _end_pos; i++)
     {
-	if (_keylen < 0 && _buffer[i] == '\t')
+	if (_buffer[i] == '\t')
 	{
 	    _keylen = i - _start_pos;
 	    _buffer[i] = '\0';
-	    set_key (_key, _buffer + _start_pos);
 	    break;
 	}
 	else if (_buffer[i] == '\n') break;
@@ -214,12 +218,11 @@ data_reader<T>::fill_next_line()
     {
 	if (_buffer[i] == '\n')
 	{
+	    _buffer[i] = '\0';
 	    _totallen = i - _start_pos;
 	    if (_keylen < 0)
 	    {
 		_keylen = _totallen;
-		_buffer[i] = '\0';
-		set_key (_key, _buffer + _start_pos);
 	    }
 	    return;
 	}
@@ -230,24 +233,21 @@ data_reader<T>::fill_next_line()
 	throw std::runtime_error
 	    ("Temporary data does not contain newlines or tabs");
     }
-	
-    for (i = _start_pos; i < _end_pos; i++)
+
+    set_key (_buffer);
+
+    for (i = 0; i < _end_pos; i++)
     {
 	if (_keylen < 0 && _buffer[i] == '\t')
 	{
-	    _keylen = i - _start_pos;
+	    _keylen = i;
 	    _buffer[i] = '\0';
-	    set_key (_key, _buffer + _start_pos);
 	}
 	else if (_buffer[i] == '\n')
 	{
-	    _totallen = i - _start_pos;
-	    if (_keylen < 0)
-	    {
-		_keylen = _totallen;
-		_buffer[i] = '\0';
-		set_key (_key, _buffer + _start_pos);
-	    }
+	    _buffer[i] = '\0';
+	    _totallen = i;
+	    if (_keylen < 0) _keylen = _totallen;
 	    return;
 	}
     }
@@ -268,19 +268,16 @@ data_reader<T>::get_next_value()
 				  + std::string(__FUNCTION__) + "()");
     }
 
-    if (_keylen == _totallen)
-    {
-	char *value (_buffer + _start_pos + _keylen);
-	_start_pos += _keylen + 1;
-	_keylen = 0;
-	return value;
-    }
+    char *value = _buffer + _start_pos + _keylen;
 
-    char *value (_buffer + _start_pos + _keylen + 1);
-    _start_pos += _totallen;
-    _buffer[_start_pos] = '\0';
-    _start_pos++;
+    if (_keylen == _totallen) _start_pos += _keylen + 1;
+    else
+    {
+	value++;
+	_start_pos += _totallen + 1;
+    }
     _keylen = 0;
+
     return value;
 }
 

@@ -211,14 +211,16 @@ file_merger::do_merge (const bool to_single_file)
 		queue.push (proc);
 		proc = nproc;
 	    }
-	    else if (cmp > 0)
+	    else
 	    {
-		queue.pop();
-		queue.push (proc);
-		proc = nproc;
-		key = nproc->get_key_copy();
+		if (cmp > 0)
+		{
+		    queue.pop();
+		    queue.push (proc);
+		    proc = nproc;
+		}
+		key = proc->get_key_copy();
 	    }
-	    else key = proc->get_key_copy();
 	}
 
 	outfile.close();
