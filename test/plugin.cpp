@@ -6,7 +6,7 @@
 #include "configuration.h"
 #include "mapreducer.h"
 
-class someplug : public mapredo::mapreducer<std::string>
+class someplug : public mapredo::mapreducer<char*>
 {
 public:
     void setup_configuration (mapredo::configuration& config) {
@@ -21,7 +21,7 @@ public:
 	    throw std::runtime_error ("Value mismatch");
 	}
     }
-    void reduce (std::string key, vlist& values, mapredo::collector&) {}
+    void reduce (char* key, vlist& values, mapredo::collector&) {}
 private:
     int _integer;
     std::string _text;
