@@ -223,6 +223,16 @@ file_merger::do_merge (const bool to_single_file)
 	    }
 	}
 
+	if (compressed && _cinbufpos > 0)
+	{
+	    _coutbufpos = 0x15000;
+	    _compressor->compress (_cinbuffer.get(),
+				   _cinbufpos,
+				   _coutbuffer.get(),
+				   _coutbufpos);
+	    outfile.write (_coutbuffer.get(), _coutbufpos);
+	}
+
 	outfile.close();
     }
 }
