@@ -47,9 +47,9 @@ namespace mapredo
 			//std::cerr << "NF " << *nproc->next_key() << '\n';
 			if (*nproc == _key)
 			{
+			    _queue->push (proc);
 			    _value = nproc->get_next_value();
 			    //std::cerr << "V1:" << _value << "\n";
-			    _queue->push (proc);
 			    return *this;
 			}
 			//std::cerr << "All done for " << _key <<  "\n";
