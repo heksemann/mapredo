@@ -82,8 +82,8 @@ sorter_buffer::ideal_ratio() const
     double ratio ((double)_buffer_used
 		  / (_lookup_used * sizeof(struct lookup)));
 
-    if (ratio < .1) ratio = .1;
-    else if (ratio > 10) ratio = 10;
+    if (ratio < .01) ratio = .01;
+    else if (ratio > 100) ratio = 100;
 
     return ratio;
 }

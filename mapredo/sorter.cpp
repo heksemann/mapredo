@@ -67,7 +67,7 @@ sorter::add (const char* keyvalue, const size_t size)
 		  << " || "
 		  << _current->buffer_used() + size << " > "
 		  << _current->buffer_size()
-		  << " sizeof(lookup) " << sizeof(lookup)
+		  << " ideal ratio " << _current->ideal_ratio()
 		  << "\n";
 #endif
 
