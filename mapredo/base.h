@@ -56,6 +56,12 @@ namespace mapredo
 	 */
 	virtual void configure() {}
 
+	/**
+	 * Fast integer to ascii convertor from Andrei Alexandrescu.  This
+	 * may be handy inside your reducer.
+	 */
+	size_t uint_to_ascii (uint64_t value, char* dst);
+
     protected:
 	base() = default;
 

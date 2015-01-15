@@ -3,6 +3,7 @@ lib_LTLIBRARIES = libmapredo.la
 AM_CXXFLAGS += -DPLUGINSDIR=\"$(libdir)/mapredo\"
 
 libmapredo_la_SOURCES = \
+	base.cpp \
 	directory.cpp \
 	engine.cpp \
 	file_merger.cpp \
