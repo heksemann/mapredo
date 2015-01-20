@@ -4,6 +4,7 @@
 #else
 #include <io.h>
 #endif
+#include <cstdio>
 #include <cctype>
 #include <iostream>
 #include <future>
@@ -19,6 +20,7 @@
 #include "plugin_loader_win32.h"
 #endif
 #include "settings.h"
+#include "compression.h"
 
 engine::engine (const std::string& tmpdir,
 		const std::string& subdir,
@@ -82,7 +84,7 @@ engine::flush (mapredo::base& mapreducer, plugin_loader& loader)
 	sorter.wait_flushed();
 	std::list<std::string> tmpfiles (sorter.grab_tmpfiles());
 
-	if (tmpfiles.size() == 1)
+	if (tmpfiles.size() == 1 && settings::instance().sort_output())
 	{
 	    _files_final_merge.push_back (tmpfiles.front());
 	}
@@ -97,7 +99,8 @@ engine::flush (mapredo::base& mapreducer, plugin_loader& loader)
     }
     _sorters.clear();
 
-    merge (mapreducer);
+    if (settings::instance().sort_output()) merge_sorted (mapreducer);
+    else merge_grouped (mapreducer);
 }
 
 void
@@ -130,7 +133,7 @@ engine::reduce (mapredo::base& mapreducer, plugin_loader& loader)
 
 	for (auto& tmpfiles: lists)
 	{
-	    if (tmpfiles.size() == 1)
+	    if (tmpfiles.size() == 1 && settings::instance().sort_output())
 	    {
 		_files_final_merge.push_back (tmpfiles.front());
 	    }
@@ -144,7 +147,8 @@ engine::reduce (mapredo::base& mapreducer, plugin_loader& loader)
 	    }
 	}
 
-	merge (mapreducer);
+	if (settings::instance().sort_output()) merge_sorted (mapreducer);
+	else merge_grouped (mapreducer);
     }
     catch (...)
     {
@@ -162,9 +166,55 @@ engine::reduce (mapredo::base& mapreducer, plugin_loader& loader)
 }
 
 void
-engine::merge (mapredo::base& mapreducer)
+engine::merge_grouped (mapredo::base& mapreducer)
 {
+    auto iter = _mergers.begin();
+
+    if (_files_final_merge.empty())
+    {
+	if (_mergers.empty()) return;
+	if (_mergers.size() == 1)
+	{
+	    iter->merge();
+	    return;
+	}
+    }
+
     std::vector<std::future<std::string>> results;
+    results.resize (_mergers.size() - 1);
+    auto riter = results.begin();
+
+    for (iter = _mergers.begin() + 1; iter != _mergers.end(); iter++, riter++)
+    {
+	auto& merger (*iter);
+
+	*riter = std::async (std::launch::async,
+			     &file_merger::merge_to_file,
+			     &merger);
+    }
+
+    // one of the threads may start outputting right away
+    _mergers.front().merge(); //works, disabled for now
+
+    for (iter = _mergers.begin() + 1, riter = results.begin();
+	 iter != _mergers.end(); iter++, riter++)
+    {
+	if (iter->exception_ptr())
+	{
+	    std::rethrow_exception(iter->exception_ptr());
+	}
+	_files_final_merge.push_back (riter->get());
+    }
+    _mergers.clear();
+
+    output_final_files();
+    _files_final_merge.clear();
+}
+
+void
+engine::merge_sorted (mapredo::base& mapreducer)
+{
+    std::vector<std::future<std::list<std::string>>> results;
     results.resize (_mergers.size());
     auto iter = _mergers.begin();
     auto riter = results.begin();
@@ -184,7 +234,7 @@ engine::merge (mapredo::base& mapreducer)
 	auto& merger (*iter);
 
 	*riter = std::async (std::launch::async,
-			     &file_merger::merge_to_file,
+			     &file_merger::merge_to_files,
 			     &merger);
     }
 
@@ -195,7 +245,10 @@ engine::merge (mapredo::base& mapreducer)
 	{
 	    std::rethrow_exception(iter->exception_ptr());
 	}
-	_files_final_merge.push_back (riter->get());
+	for (auto& entry: riter->get())
+	{
+	    _files_final_merge.push_back (entry);
+	}
     }
     _mergers.clear();
 
@@ -236,4 +289,81 @@ engine::collect (const char* inbuffer, const size_t insize)
 	_sorters[hash(inbuffer, insize) % _parallel].add (inbuffer, insize);
     }
     else _sorters[0].add (inbuffer, insize);
+}
+
+void
+engine::output_final_files()
+{
+    static const size_t bufsize = 0x10000;
+    std::unique_ptr<char[]> buf (new char[bufsize]); 
+    std::unique_ptr<char[]> cbuf;
+    std::unique_ptr<compression> compressor;
+
+    if (settings::instance().compressed())
+    {
+	cbuf.reset (new char[0x15000]);
+	compressor.reset (new compression());
+    }
+
+    for (auto& file: _files_final_merge)
+    {
+	size_t bytes;
+	FILE *fp = fopen (file.c_str(), "r");
+
+	if (!fp)
+	{
+	    char err[80];
+
+	    throw std::runtime_error
+		(std::string("Can not open tmpfile: ")
+		 + strerror_r(errno, err, sizeof(err)));
+	}
+
+	if (settings::instance().compressed())
+	{
+	    size_t start = 0;
+	    size_t end = 0;
+	    size_t insize;
+	    size_t outsize = bufsize;
+
+	    while ((bytes = fread(cbuf.get() + start,
+				  1, 0x15000 - end, fp)) > 0)
+	    {
+		end += bytes;
+		insize = end - start;
+
+		while (insize > 0
+		       && compressor->inflate (cbuf.get() + start, insize,
+					       buf.get(), outsize))
+		{
+		    write (STDOUT_FILENO, buf.get(), outsize);
+		    start += insize;
+		    insize = end - start;
+		    outsize = bufsize;
+		}
+
+		if (start > 0)
+		{
+		    if (start != end)
+		    {
+			end -= start;
+			memmove (cbuf.get(), cbuf.get() + start, end);
+			start = 0;
+		    }
+		    else start = end = 0;
+		}
+		else throw std::runtime_error
+			 ("Can not read compressed data from temporary file");
+	    }
+	}
+	else
+	{
+	    size_t bytes;
+	    
+	    while ((bytes = fread(buf.get(), 1, bufsize, fp)) > 0)
+	    {
+		write (STDOUT_FILENO, buf.get(), bytes);
+	    }
+	}
+    }
 }

@@ -42,6 +42,11 @@ public:
     std::string merge_to_file();
 
     /**
+     * Merge to at most max_open_files file and return the file names.
+     */
+    std::list<std::string> merge_to_files();
+
+    /**
      * Function called by reducer to report output.
      */
     void collect (const char* line, const size_t length);
@@ -55,14 +60,22 @@ public:
     file_merger (const file_merger&) = delete;
 
 private:
-    void merge_max_files (const bool to_single_file = false);
+    enum merge_mode
+    {
+	TO_MAX_FILES,
+	TO_SINGLE_FILE,
+	TO_OUTPUT
+    };
+    
+    void merge_max_files (const merge_mode mode);
     void compressed_sort();
     void regular_sort();
-    template<typename T> void do_merge (const bool to_single_file);
+    template<typename T> void do_merge (const merge_mode mode);
 
     mapredo::base& _reducer;
     size_t _size_buffer;
     size_t _max_open_files;
+    size_t _num_merged_files = 0;
     std::string _file_prefix;
     int _tmpfile_id = 0;
     std::list<std::string> _tmpfiles;
@@ -75,11 +88,19 @@ private:
 };
 
 template <typename T> void
-file_merger::do_merge (const bool to_single_file)
+file_merger::do_merge (const merge_mode mode)
 {
     typename data_reader<T>::queue queue;
+    size_t files;
+
+    if (mode == TO_MAX_FILES)
+    {
+	files = std::min (_tmpfiles.size() - _num_merged_files,
+			  _max_open_files);
+    }
+    else files = std::min (_tmpfiles.size(), _max_open_files);
     
-    for (size_t i = _max_open_files; i > 0 && !_tmpfiles.empty(); i--)
+    for (size_t i = 0; i < files; i++)
     {
 	const std::string& filename = _tmpfiles.front();
 	auto* proc = new tmpfile_reader<T>
@@ -97,14 +118,18 @@ file_merger::do_merge (const bool to_single_file)
     if (settings::instance().verbose())
     {
 	std::cerr << "Processing " << queue.size() << " tmpfiles, "
-		  << _tmpfiles.size() << " left \n";
+		  << _tmpfiles.size() << " left\n";
     }
 
-    if (queue.empty()) return;
-
-    if (_tmpfiles.empty() && !to_single_file) // last_merge, run reducer
+    if (queue.empty())
     {
-	if (settings::instance().verbose()) std::cerr << "Last merge\n";
+	throw std::runtime_error ("Queue should not be empty here");
+    }
+
+    _num_merged_files++;
+
+    if (_tmpfiles.empty() && mode == TO_OUTPUT) // last_merge, run reducer
+    {
 	mapredo::valuelist<T> list (queue);
 
 	while (!queue.empty())
@@ -115,7 +140,8 @@ file_merger::do_merge (const bool to_single_file)
 		(key, list, *this);
 	}
     }
-    else if (_reducer.reducer_can_combine())
+    else if (_reducer.reducer_can_combine()
+	     || (_tmpfiles.empty() && mode == TO_SINGLE_FILE))
     {
 	tmpfile_collector collector (_file_prefix, _tmpfile_id);
 	mapredo::valuelist<T> list (queue);
