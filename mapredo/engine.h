@@ -57,7 +57,9 @@ public:
     void collect (const char* line, const size_t length);
 
 private:
-    void merge (mapredo::base& mapreducer);
+    void merge_grouped (mapredo::base& mapreducer);
+    void merge_sorted (mapredo::base& mapreducer);
+    void output_final_files();
 
     const std::string _tmpdir;
     bool _is_subdir = false;
