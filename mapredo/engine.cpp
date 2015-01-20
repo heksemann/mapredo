@@ -339,21 +339,28 @@ engine::output_final_files()
 		    write (STDOUT_FILENO, buf.get(), outsize);
 		    start += insize;
 		    insize = end - start;
+#if 0
+		    std::cerr << "Insize " << insize
+			      << " start " << start
+			      << " end " << end
+			      << " Outsize " << outsize
+			      << "\n";
+#endif
 		    outsize = bufsize;
 		}
 
-		if (start > 0)
+		if (insize == 0) start = end = 0;
+		else
 		{
-		    if (start != end)
-		    {
-			end -= start;
-			memmove (cbuf.get(), cbuf.get() + start, end);
-			start = 0;
-		    }
-		    else start = end = 0;
+		    end -= start;
+		    memmove (cbuf.get(), cbuf.get() + start, end);
+		    start = 0;
 		}
+#if 0
 		else throw std::runtime_error
-			 ("Can not read compressed data from temporary file");
+			 ("Can not read compressed data from temporary file"
+			  " in final output phase");
+#endif
 	    }
 	}
 	else
