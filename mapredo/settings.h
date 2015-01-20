@@ -18,12 +18,19 @@ public:
     void set_compressed (const bool on = true) {_compressed = on;}
     bool keep_tmpfiles() const {return _keep_tmpfiles;}
     void set_keep_tmpfiles (const bool on = true) {_keep_tmpfiles = on;}
+    bool sort_output() const {return _sort_output;}
+    void set_sort_output (const bool on = true) {_sort_output = on;}
+    bool reverse_sort() const {return _reverse_sort;}
+    void set_reverse_sort (const bool on = true) {_reverse_sort = on;}
+
 private:
     settings() = default;
 
     bool _verbose = false;
     bool _compressed = false;
     bool _keep_tmpfiles = false;
+    bool _sort_output = false;
+    bool _reverse_sort = false;
 };
 
 #endif
