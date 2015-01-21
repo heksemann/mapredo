@@ -194,7 +194,7 @@ engine::merge_grouped (mapredo::base& mapreducer)
     }
 
     // one of the threads may start outputting right away
-    _mergers.front().merge(); //works, disabled for now
+    _mergers.front().merge();
 
     for (iter = _mergers.begin() + 1, riter = results.begin();
 	 iter != _mergers.end(); iter++, riter++)
@@ -318,6 +318,7 @@ engine::output_final_files()
 		(std::string("Can not open tmpfile: ")
 		 + strerror_r(errno, err, sizeof(err)));
 	}
+	if (!settings::instance().keep_tmpfiles()) unlink (file.c_str());
 
 	if (settings::instance().compressed())
 	{
@@ -372,5 +373,6 @@ engine::output_final_files()
 		write (STDOUT_FILENO, buf.get(), bytes);
 	    }
 	}
+	fclose (fp);
     }
 }
