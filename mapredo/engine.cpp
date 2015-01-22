@@ -195,8 +195,9 @@ engine::merge_grouped (mapredo::base& mapreducer)
 
     // one of the threads may start outputting right away
     _mergers.front().merge();
+    _mergers.pop_front();
 
-    for (iter = _mergers.begin() + 1, riter = results.begin();
+    for (iter = _mergers.begin(), riter = results.begin();
 	 iter != _mergers.end(); iter++, riter++)
     {
 	if (iter->exception_ptr())
