@@ -4,6 +4,7 @@
 #define _HEXTREME_MAPREDO_ENGINE_H
 
 #include <memory>
+#include <deque>
 
 #include "collector.h"
 #include "sorter.h"
@@ -70,7 +71,7 @@ private:
     size_t _unique_id = 0;
 
     std::vector<sorter> _sorters;
-    std::vector<file_merger> _mergers;
+    std::deque<file_merger> _mergers;
     std::list<std::string> _files_final_merge;
 };
 
