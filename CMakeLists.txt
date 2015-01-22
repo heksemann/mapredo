@@ -2,6 +2,10 @@ cmake_minimum_required (VERSION 2.6)
 
 project (mapredo)
 
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release")
+endif()
+
 if (CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS
     "${CMAKE_CXX_FLAGS} -g -pedantic -Wall -Wno-unused-result -std=c++11")
