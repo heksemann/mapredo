@@ -2,8 +2,9 @@ cmake_minimum_required (VERSION 2.6)
 
 project (mapredo)
 
-if(CMAKE_COMPILER_IS_GNUCXX)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+if (CMAKE_COMPILER_IS_GNUCXX)
+  set(CMAKE_CXX_FLAGS
+    "${CMAKE_CXX_FLAGS} -g -pedantic -Wall -Wno-unused-result -std=c++11")
 endif()
 
 set (CPACK_PACKAGE_VERSION_MAJOR 0)
@@ -29,7 +30,7 @@ enable_testing()
 find_package(GTest REQUIRED)
 include_directories(${GTEST_INCLUDE_DIR})
 
-add_definitions(-DPLUGINSDIR="${CMAKE_INSTALL_LIBDIR}/mapredo")
+add_definitions(-DPLUGINSDIR="${CMAKE_INSTALL_FULL_LIBDIR}/mapredo")
 
 add_subdirectory (frontend)
 add_subdirectory (mapredo)

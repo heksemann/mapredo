@@ -25,7 +25,7 @@ public:
 	}
 
 	if (!load(plugin_path)
-	    && !load(".libs/" + plugin_path)
+	    && !load("plugins/" + plugin_path)
 	    && !load(PLUGINSDIR + std::string("/") + plugin_path))
 	{
 	    throw std::runtime_error ("Unable to find mapreduce plugin "
