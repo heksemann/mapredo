@@ -71,7 +71,7 @@ TEST(directory, remove)
 
 TEST(plugin_loader, get)
 {
-    plugin_loader loader ("../plugins/.libs/wordcount.so");
+    plugin_loader loader ("../plugins/wordcount.so");
 
     mapredo::base& mapreducer (loader.get());
     (void)mapreducer;
