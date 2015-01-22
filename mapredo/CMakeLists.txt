@@ -15,6 +15,6 @@ set_target_properties(lmapredo
   SOVERSION 0
   OUTPUT_NAME mapredo)
 
-target_link_libraries (lmapredo snappy)
+target_link_libraries (lmapredo pthread snappy)
 
 install (TARGETS lmapredo DESTINATION ${CMAKE_INSTALL_LIBDIR})
