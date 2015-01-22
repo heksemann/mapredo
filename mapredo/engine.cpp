@@ -318,7 +318,10 @@ engine::output_final_files()
 		(std::string("Can not open tmpfile: ")
 		 + strerror_r(errno, err, sizeof(err)));
 	}
+<<<<<<< HEAD
 	if (!settings::instance().keep_tmpfiles()) unlink (file.c_str());
+=======
+>>>>>>> 83788a8d152c99c8a8c3bbda011f808ad12592da
 
 	if (settings::instance().compressed())
 	{
@@ -340,6 +343,7 @@ engine::output_final_files()
 		    write (STDOUT_FILENO, buf.get(), outsize);
 		    start += insize;
 		    insize = end - start;
+<<<<<<< HEAD
 #if 0
 		    std::cerr << "Insize " << insize
 			      << " start " << start
@@ -362,6 +366,23 @@ engine::output_final_files()
 			 ("Can not read compressed data from temporary file"
 			  " in final output phase");
 #endif
+=======
+		    outsize = bufsize;
+		}
+
+		if (start > 0)
+		{
+		    if (start != end)
+		    {
+			end -= start;
+			memmove (cbuf.get(), cbuf.get() + start, end);
+			start = 0;
+		    }
+		    else start = end = 0;
+		}
+		else throw std::runtime_error
+			 ("Can not read compressed data from temporary file");
+>>>>>>> 83788a8d152c99c8a8c3bbda011f808ad12592da
 	    }
 	}
 	else
@@ -373,6 +394,9 @@ engine::output_final_files()
 		write (STDOUT_FILENO, buf.get(), bytes);
 	    }
 	}
+<<<<<<< HEAD
 	fclose (fp);
+=======
+>>>>>>> 83788a8d152c99c8a8c3bbda011f808ad12592da
     }
 }
