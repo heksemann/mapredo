@@ -58,7 +58,7 @@ file_merger::merge()
 {
     while (!_tmpfiles.empty())
     {
-	merge_max_files();
+	merge_max_files (TO_OUTPUT);
 	if (_texception) return;
     }
 }
@@ -68,10 +68,11 @@ file_merger::merge_to_file()
 {
     try
     {
-	while (_tmpfiles.size() > 1)
+	do
 	{
-	    merge_max_files (true);
+	    merge_max_files (TO_SINGLE_FILE);
 	}
+	while (_tmpfiles.size() > 1);
 
 	return _tmpfiles.front();
     }
@@ -82,24 +83,49 @@ file_merger::merge_to_file()
     }
 }
 
+std::list<std::string>
+file_merger::merge_to_files()
+{
+    try
+    {
+	while (_tmpfiles.size() > _num_merged_files
+	       || _tmpfiles.size() > _max_open_files)
+	{
+	    if (_tmpfiles.size() == _num_merged_files)
+	    {
+		// We have to re-merge files because we still have too many
+		_num_merged_files = 0;
+	    }
+	    merge_max_files (TO_MAX_FILES);
+	}
+
+	return _tmpfiles;
+    }
+    catch (...)
+    {
+	_texception = std::current_exception();
+	return (std::list<std::string>());
+    }
+}
+
 void
-file_merger::merge_max_files (const bool to_single_file)
+file_merger::merge_max_files (const file_merger::merge_mode mode)
 {
     switch (_reducer.type())
     {
     case mapredo::base::keytype::STRING:
     {
-	do_merge<char*> (to_single_file);
+	do_merge<char*> (mode);
 	break;
     }
     case mapredo::base::keytype::DOUBLE:
     {
-	do_merge<double> (to_single_file);
+	do_merge<double> (mode);
 	break;
     }
     case mapredo::base::keytype::INT64:
     {
-	do_merge<int64_t> (to_single_file);
+	do_merge<int64_t> (mode);
 	break;
     }
     case mapredo::base::keytype::UNKNOWN:
@@ -113,5 +139,6 @@ file_merger::merge_max_files (const bool to_single_file)
 void
 file_merger::collect (const char* line, const size_t length)
 {
-    std::cout << line << "\n";
+    fwrite (line, length, 1, stdout);
+    fwrite ("\n", 1, 1, stdout);
 }

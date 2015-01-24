@@ -188,6 +188,8 @@ main (int argc, char* argv[])
     std::string work_dir = get_default_workdir();
     bool map_only = false;
     bool reduce_only = false;
+    bool sort_output = false;
+    bool reverse_sort = false;
     bool keep_tmpfiles = false;
     std::string plugin_path;
 
@@ -223,6 +225,10 @@ main (int argc, char* argv[])
 	    ("", "map-only", "Only perform the mapping stage", cmd, false);
 	TCLAP::SwitchArg reduceOnlyArg
 	    ("", "reduce-only", "Only perform the reduce stage", cmd, false);
+	TCLAP::SwitchArg sortArg
+	    ("", "sort", "Sort keys in final output", cmd, false);
+	TCLAP::SwitchArg reverseSortArg
+	    ("", "rsort", "Reverse sort keys in final output", cmd, false);
 	TCLAP::UnlabeledValueArg<std::string> pluginArg
 	    ("plugin", "Plugin file to use", true, "", "plugin file", cmd);
 
@@ -236,6 +242,11 @@ main (int argc, char* argv[])
 	keep_tmpfiles = keepFilesArg.getValue();
 	map_only = mapOnlyArg.getValue();
 	reduce_only = reduceOnlyArg.getValue();
+	sort_output = sortArg.getValue();
+	if (reverseSortArg.getValue())
+	{
+	    sort_output = reverse_sort = true;
+	}
 	plugin_path = pluginArg.getValue();
 	compression = noCompressionArg.getValue();
 
@@ -280,6 +291,8 @@ main (int argc, char* argv[])
     if (verbose) config.set_verbose();
     if (compression) config.set_compressed();
     if (keep_tmpfiles) config.set_keep_tmpfiles();
+    if (sort_output) config.set_sort_output();
+    if (reverse_sort) config.set_reverse_sort();
 
     try
     {

@@ -40,7 +40,8 @@ public:
 
 	    stream << "Snappy compression buffer too small (" << outbuffer_size
 		   << ") for input data (" << inbuffer_size << "), needs "
-		   << snappy_max_compressed_length (inbuffer_size) << " bytes";
+		   << snappy_max_compressed_length(inbuffer_size) + 4
+		   << " bytes";
 	    throw std::runtime_error (stream.str());
 	}
 	
@@ -85,12 +86,12 @@ public:
 	inbuffer_size = comp_len + 4;
 
 	if (snappy_uncompressed_length (inbuffer + 4, comp_len,
-					    &uncomp_len) != SNAPPY_OK)
+					&uncomp_len) != SNAPPY_OK)
 	{
 	    throw std::runtime_error
 		("Can not parse corrupted Snappy uncompressed size");
 	}
-	if (uncomp_len >= outbuffer_size)
+	if (uncomp_len > outbuffer_size)
 	{
 	    std::ostringstream stream;
 
@@ -102,7 +103,7 @@ public:
 	}
 
 	if (snappy_uncompress (inbuffer + 4, comp_len,
-				outbuffer, &outbuffer_size) == SNAPPY_OK)
+			       outbuffer, &outbuffer_size) == SNAPPY_OK)
 	{
 	    return true;
 	}
