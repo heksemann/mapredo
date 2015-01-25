@@ -11,6 +11,8 @@ if (CMAKE_COMPILER_IS_GNUCXX)
     "${CMAKE_CXX_FLAGS} -g -pedantic -Wall -Wno-unused-result -std=c++11")
 endif()
 
+include_directories(BEFORE ${PROJECT_SOURCE_DIR})
+
 set (CPACK_PACKAGE_VERSION_MAJOR 0)
 set (CPACK_PACKAGE_VERSION_MINOR 1)
 set (CPACK_PACKAGE_VERSION_PATCH 0)
