@@ -77,7 +77,7 @@ static void run (const std::string& plugin_file,
     plugin_loader plugin (plugin_file);
     auto& mapreducer (plugin.get());
     engine mapred_engine (work_dir, subdir, parallel, buffer_size, max_files);
-    size_t buf_size = 0x2000;
+    size_t buf_size = 0x10000;
     std::unique_ptr<char[]> buf (new char[buf_size]);
     size_t start = 0, end = 0;
     size_t i;
@@ -86,13 +86,7 @@ static void run (const std::string& plugin_file,
     bool first = true;
     std::chrono::high_resolution_clock::time_point start_time;
 
-#ifdef _WIN32
-    auto STDIN_FILENO = GetStdHandle (STD_INPUT_HANDLE);
-    while ((ReadFile (STDIN_FILENO, buf.get() + end, 
-	    buf_size - end, &bytes, NULL) && bytes > 0))
-#else
-    while ((bytes = read(STDIN_FILENO, buf.get() + end, buf_size - end)) > 0)
-#endif
+    while ((bytes = fread(buf.get() + end, 1, buf_size - end, stdin)) > 0)
     {
 	end += bytes;
 	if (first)
@@ -106,8 +100,7 @@ static void run (const std::string& plugin_file,
 		start += 3;
 	    }
 	    start_time = std::chrono::high_resolution_clock::now();
-	    mapred_engine.enable_sorters (mapreducer.type(),
-					  false);
+	    mapred_engine.enable_sorters (mapreducer.type(), false);
 	    if (verbose)
 	    {
 		std::cerr << "Using working directory " << work_dir << "\n";
@@ -118,40 +111,20 @@ static void run (const std::string& plugin_file,
 			  << "\n";
 	    }
 	}
-	for (i = start; i < end; i++)
+	for (i = end-1; i > start; i--) if (buf[i] == '\n') break;
+	    
+	if (start == i)
 	{
-	    if (buf[i] == '\n')
-	    {
-		if (i == start || buf[i-1] != '\r')
-		{
-		    buf[i] = '\0';
-		    mapreducer.map(buf.get() + start, i - start, mapred_engine);
-		}
-		else
-		{
-		    buf[i-1] = '\0';
-		    mapreducer.map (buf.get() + start, i - start - 1,
-				    mapred_engine);
-		}
-		start = i + 1;
-	    }
+	    throw std::runtime_error ("No newline found in input buffer");
 	}
-	if (start < i)
-	{
-	    if (start == 0)
-	    {
-		buf_size *= 2; // double line buffer
-		char* nbuf = new char[buf_size];
-		memcpy (nbuf, buf.get(), end);
-		buf.reset (nbuf);
-	    }
-	    memmove (buf.get(), buf.get() + start, end - start);
-	    end -= start;
-	    start = 0;
-	}
-	else start = end = 0;
+	// New buf here
+	end -= i;
+	start = 0;
+	memcpy (buf.get(), buf.get() + i, end);
     }
     if (first) return; // no input
+
+    // Wait
 
     if (verbose)
     {
