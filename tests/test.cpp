@@ -1,10 +1,14 @@
 
+#include <thread>
+#include <future>
+
 #include <gtest/gtest.h>
 
 #include "compression.h"
 #include "directory.h"
 #include "plugin_loader.h"
 #include "mapreducer.h"
+#include "buffer_trader.h"
 
 TEST(compression, restore)
 {
@@ -76,6 +80,39 @@ TEST(plugin_loader, get)
     mapredo::base& mapreducer (loader.get());
     (void)mapreducer;
 }
+
+TEST(buffer_trader, producer_swap)
+{
+    buffer_trader bt (0x10000, 3, 2);
+
+    input_buffer* current = bt.producer_get();
+    input_buffer* next = bt.producer_get();
+    EXPECT_THROW (bt.producer_get(), std::runtime_error);
+
+    EXPECT_NE (nullptr, current);
+    EXPECT_NE (nullptr, next);
+
+    current->end() = 111;
+    auto* tmp = current;
+    current = next;
+
+    auto result (std::async(std::launch::async,
+			    [](buffer_trader* bt)
+			    {
+				auto* buffer = bt->consumer_get();
+				return buffer->end();
+			    },
+			    &bt));
+    
+    next = bt.producer_swap (tmp);
+    EXPECT_NE (nullptr, next);
+    EXPECT_NE (next->end(), 111);
+
+    EXPECT_EQ (111, result.get());
+}
+
+
+
 
 #if 0
 class  btest : public mapredo::mapreducer<double>
