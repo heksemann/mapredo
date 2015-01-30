@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <queue>
 
+/** Base class for classes used when reading data in merge sort phase */
 template <class T> class data_reader
 {
 public:

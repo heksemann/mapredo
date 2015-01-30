@@ -5,6 +5,9 @@
 
 #include "settings.h"
 
+/**
+ * A collector class that writes to a temporary file
+ */
 class tmpfile_collector : public mapredo::collector
 {
 public:
@@ -78,6 +81,7 @@ public:
 	}
     }
 
+    /** @returns the name of the temporary file */
     std::string filename() {return _filename_stream.str();}
 
 private:

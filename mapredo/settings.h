@@ -6,9 +6,11 @@
 #include <cstdint>
 #include <string>
 
+/** Global settings for the engine */
 class settings
 {
 public:
+    /** @returns a singleton settings object */
     static settings& instance();
 
     int64_t parse_size (const std::string& size) const;

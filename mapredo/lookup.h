@@ -3,12 +3,21 @@
 #ifndef _HEXTREME_MAPREDO_LOOKUP_H
 #define _HEXTREME_MAPREDO_LOOKUP_H
 
+/**
+ * Class used in an array to enable sorting of data.
+ */
 struct lookup
 {
+    /** @return the key and value of the entry */
     const char* keyvalue() const {return _keyvalue;}
+    /** Set the key and value of the entry */
     void set_ptr (const char* keyvalue) {
 	_keyvalue = keyvalue;
     }
+    /**
+     * Operator used when sorting the array
+     * @param the array element to compare this with
+     */
     bool operator< (const lookup& right) const {
 	for (int i = 0;; i++)
 	{

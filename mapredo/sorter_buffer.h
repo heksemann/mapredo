@@ -9,9 +9,17 @@
 
 #include "lookup.h"
 
+/**
+ * Represents a buffer that will be sorted, with a lookup table
+ */
 class sorter_buffer
 {
 public:
+    /**
+     * @param bytes_available the number of bytes to use for the
+     *                        buffer and the lookup table in total
+     * @param ratio the ratio between the buffer and the lookup table
+     */
     sorter_buffer (const size_t bytes_available, const double ratio);
     ~sorter_buffer();
 
@@ -29,11 +37,17 @@ public:
     /** @return number of elements used in lookup vector */
     size_t lookup_used() const {return _lookup_used;}
 
+    /**
+     * @param bytes the number of bytes to attempt to fit in the buffer/lookup
+     * @returns true if there is no room for the number of bytes
+     */
     bool would_overflow (const size_t bytes) const {
 	return (_lookup_used == _lookup_size
 		|| _buffer_used + bytes >= _buffer_size);
     }
+    /** @returns true if the buffer does not contain any data */
     bool empty() const {return _buffer_used == 0;}
+    /** Remove all data from the buffer and lookup table */
     void clear() {_buffer_used = _lookup_used = 0;}
 
     void add (const char* keyvalue, const size_t totalsize) {

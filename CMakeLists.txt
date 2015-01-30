@@ -36,9 +36,12 @@ enable_testing()
 find_package(GTest REQUIRED)
 include_directories(${GTEST_INCLUDE_DIR})
 
+find_package(Doxygen)
+
 add_definitions(-DPLUGINSDIR="${CMAKE_INSTALL_FULL_LIBDIR}/mapredo")
 
 add_subdirectory (frontend)
 add_subdirectory (mapredo)
 add_subdirectory (plugins)
 add_subdirectory (tests)
+add_subdirectory (doc)

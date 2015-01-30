@@ -13,9 +13,19 @@
 
 class compression;
 
+/**
+ * Used to sort lines on key
+ */
 class sorter
 {
 public:
+    /**
+     * @param tmpdir where to save temporary files
+     * @param index unique number used in filenames
+     * @param max_bytes_buffer number of bytes in each buffer to sort
+     * @param type type of key to sort on
+     * @param reverse sort in descending order if true
+     */
     sorter (const std::string& tmpdir,
 	    const size_t index,
 	    const size_t max_bytes_buffer,

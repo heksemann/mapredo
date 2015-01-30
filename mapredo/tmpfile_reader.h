@@ -12,10 +12,18 @@
 #include "data_reader.h"
 #include "compression.h"
 
+/**
+ * Used to read a temporary file while merge sorting
+ */
 template <class T>
 class tmpfile_reader : public data_reader<T>
 {
 public:
+    /**
+     * @param filename the name of the temporary file
+     * @param buffer_size size of the buffer to read data into
+     * @param delete_file_after set true if the file can be deleted
+     */
     tmpfile_reader (const std::string& filename,
 		    const int buffer_size,
 		    const bool delete_file_after);
@@ -26,6 +34,7 @@ public:
 	if (_delete_file_after) remove (_filename.c_str());
     }
 
+    /** @returns the name of the temporary file */
     const std::string& filename() const {return _filename;}
 
     tmpfile_reader (const tmpfile_reader&) = delete;

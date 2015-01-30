@@ -19,6 +19,7 @@ namespace mapredo
     class base;
 }
 
+/** Does merging of temporary data from the sorting phase */
 class file_merger : public mapredo::collector
 {
 public:

@@ -9,6 +9,7 @@
 
 #include "base.h"
 
+/** Used to load mapreducer plugins dynamically */
 class plugin_loader
 {
 public:

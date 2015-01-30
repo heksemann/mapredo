@@ -14,6 +14,7 @@
 
 #include "lookup.h"
 
+/** Used to compress and uncompress data: This can make the engine faster. */
 class compression
 {
 public:

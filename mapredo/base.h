@@ -8,6 +8,9 @@
 
 namespace mapredo
 {
+    /**
+     * Base class for all map-reducers
+     */
     class base
     {
     public:
