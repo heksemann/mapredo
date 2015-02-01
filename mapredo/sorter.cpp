@@ -18,16 +18,12 @@ sorter::sorter (const std::string& tmpdir,
 		const size_t bytes_buffer,
 		const mapredo::base::keytype type,
 		const bool reverse) :
+    _buffer (_bytes_per_buffer, 3.0),
     _tmpdir (tmpdir),
     _bytes_per_buffer (bytes_buffer/2),
     _type (type),
     _reverse (reverse)
 {
-    // proeve med int offsets inni buffer?
-
-    _buffers.push_back (sorter_buffer(_bytes_per_buffer, 3.0));
-    _current = &_buffers.front();
-    
     std::ostringstream filename;
 
     filename << tmpdir << "/sort_" << std::this_thread::get_id()
@@ -41,8 +37,7 @@ sorter::sorter (const std::string& tmpdir,
 }
 
 sorter::sorter (sorter&& other) :
-    _buffers (std::move(other._buffers)),
-    _current (other._current),
+    _buffer (std::move(other._buffer)),
     _tmpdir (std::move(other._tmpdir)),
     _bytes_per_buffer (other._bytes_per_buffer),
     _file_prefix (std::move(other._file_prefix)),
@@ -59,7 +54,7 @@ sorter::~sorter()
 void
 sorter::add (const char* keyvalue, const size_t size)
 {
-    if (_current->would_overflow(size))
+    if (_buffer.would_overflow(size))
     {
 #if 0
 	std::cerr << _current->lookup_used() * sizeof(lookup)
@@ -71,69 +66,28 @@ sorter::add (const char* keyvalue, const size_t size)
 		  << "\n";
 #endif
 
-	if (_buffers.size() < 2)
+	if (!_buffer.tuned())
 	{
-	    double ratio = _current->ideal_ratio();
-
-	    _buffers.push_back (sorter_buffer(_bytes_per_buffer, ratio));
+	    double ratio = _buffer.ideal_ratio();
 
 	    std::string filename;
-	    filename = flush_buffer (_current);
+	    filename = flush();
 	    if (!filename.empty())
 	    {
 		_tmpfiles.push_back ((std::string&&)filename);
 	    }
-	    _current->tune (ratio);
-	    _current = &_buffers.back();
+	    _buffer.tune (ratio);
 	}
 	else flush();
     }
 
-    _current->add (keyvalue, size);
+    _buffer.add (keyvalue, size);
 }
 
 std::list<std::string>
 sorter::grab_tmpfiles()
 {
     return std::move(_tmpfiles);
-}
-
-void
-sorter::flush()
-{
-    wait_flushed();
-    _flushing_in_progress = true;
-    _flush_result = std::async (std::launch::async,
-				&sorter::flush_buffer_safe,
-				this, _current);
-    _current = ((_current == &_buffers.front())
-		? &_buffers.back() : &_buffers.front());
-}
-
-void
-sorter::wait_flushed()
-{
-    if (_flushing_in_progress)
-    {
-	std::string filename (_flush_result.get());
-	if (_texception) std::rethrow_exception (_texception);
-	if (filename.size()) _tmpfiles.push_back ((std::string&&)filename);
-	_flushing_in_progress = false;
-    }
-}
-
-std::string
-sorter::flush_buffer_safe (sorter_buffer* const buffer)
-{
-    try
-    {
-	return flush_buffer (buffer);
-    }
-    catch (...)
-    {
-	_texception = std::current_exception();
-	return ("");
-    }
 }
 
 static bool sorter_r (const lookup& left, const lookup& right)
@@ -176,50 +130,50 @@ static bool sorter_rd (const lookup& left, const lookup& right)
 }
 
 std::string
-sorter::flush_buffer (sorter_buffer* const buffer)
+sorter::flush()
 {
-    if (buffer->lookup_used() == 0) return "";
-    //std::cerr << "Before sorting " << buffer->lookup_used()  << "\n";
+    if (_buffer.lookup_used() == 0) return "";
+    //std::cerr << "Before sorting " << _buffer.lookup_used()  << "\n";
     switch (_type)
     {
     case mapredo::base::STRING:
 	if (!_reverse)
 	{
-	    std::sort (buffer->lookup().begin(),
-		       buffer->lookup().begin() + buffer->lookup_used());	
+	    std::sort (_buffer.lookup().begin(),
+		       _buffer.lookup().begin() + _buffer.lookup_used());	
 	}
 	else
 	{
-	    std::sort (buffer->lookup().begin(),
-		       buffer->lookup().begin() + buffer->lookup_used(),
+	    std::sort (_buffer.lookup().begin(),
+		       _buffer.lookup().begin() + _buffer.lookup_used(),
 		       &sorter_r);
 	}
 	break;
     case mapredo::base::INT64:
 	if (!_reverse)
 	{
-	    std::sort (buffer->lookup().begin(),
-		       buffer->lookup().begin() + buffer->lookup_used(),
+	    std::sort (_buffer.lookup().begin(),
+		       _buffer.lookup().begin() + _buffer.lookup_used(),
 		       &sorter_n);
 	}
 	else
 	{
-	    std::sort (buffer->lookup().begin(),
-		       buffer->lookup().begin() + buffer->lookup_used(),
+	    std::sort (_buffer.lookup().begin(),
+		       _buffer.lookup().begin() + _buffer.lookup_used(),
 		       &sorter_rn);
 	}
 	break;
     case mapredo::base::DOUBLE:
 	if (!_reverse)
 	{
-	    std::sort (buffer->lookup().begin(),
-		       buffer->lookup().begin() + buffer->lookup_used(),
+	    std::sort (_buffer.lookup().begin(),
+		       _buffer.lookup().begin() + _buffer.lookup_used(),
 		       &sorter_d);
 	}
 	else
 	{
-	    std::sort (buffer->lookup().begin(),
-		       buffer->lookup().begin() + buffer->lookup_used(),
+	    std::sort (_buffer.lookup().begin(),
+		       _buffer.lookup().begin() + _buffer.lookup_used(),
 		       &sorter_rd);
 	}
 	break;
@@ -253,7 +207,7 @@ sorter::flush_buffer (sorter_buffer* const buffer)
 	    );
     }
 
-    auto end = buffer->lookup().cbegin() + buffer->lookup_used();
+    auto end = _buffer.lookup().cbegin() + _buffer.lookup_used();
 
     if (_compressor.get())
     {
@@ -264,7 +218,7 @@ sorter::flush_buffer (sorter_buffer* const buffer)
 	size_t inbufpos = 0;
 	size_t outbufpos = outbuffer_size;
 
-	for (auto iter = buffer->lookup().begin(); iter != end; iter++)
+	for (auto iter = _buffer.lookup().begin(); iter != end; iter++)
 	{
 	    const char* t (iter->keyvalue());
 	    int i = 0;
@@ -287,7 +241,7 @@ sorter::flush_buffer (sorter_buffer* const buffer)
     }
     else
     {
-	for (auto iter = buffer->lookup().begin(); iter != end; iter++)
+	for (auto iter = _buffer.lookup().begin(); iter != end; iter++)
 	{
 	    const char* t (iter->keyvalue());
 	    int i = 0;
@@ -298,7 +252,7 @@ sorter::flush_buffer (sorter_buffer* const buffer)
     }
 
     tmpfile.close();
-    buffer->clear();
+    _buffer.clear();
 
     return (filename.str());
 }

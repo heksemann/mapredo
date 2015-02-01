@@ -65,23 +65,19 @@ engine::enable_sorters (const mapredo::base::keytype type, const bool reverse)
 void
 engine::flush()
 {
-    for (auto& sorter: _sorters) sorter.flush();
-
     for (auto& sorter: _sorters)
     {
-	sorter.wait_flushed();
-	sorter.grab_tmpfiles();
+       sorter.flush();
+       sorter.grab_tmpfiles();
     }
 }
 
 void
 engine::flush (mapredo::base& mapreducer, plugin_loader& loader)
 {
-    for (auto& sorter: _sorters) sorter.flush();
-
     for (auto& sorter: _sorters)
     {
-	sorter.wait_flushed();
+	sorter.flush();
 	std::list<std::string> tmpfiles (sorter.grab_tmpfiles());
 
 	if (tmpfiles.size() == 1 && settings::instance().sort_output())

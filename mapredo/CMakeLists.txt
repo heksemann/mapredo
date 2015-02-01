@@ -2,6 +2,7 @@
 add_library (lmapredo SHARED
   base.cpp
   buffer_trader.cpp
+  consumer.cpp
   directory.cpp
   engine.cpp
   file_merger.cpp

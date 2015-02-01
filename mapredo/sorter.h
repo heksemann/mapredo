@@ -45,19 +45,17 @@ public:
      */
     std::list<std::string> grab_tmpfiles();
 
-    void flush();
-    void wait_flushed();
+    /**
+     * Sort and flush current buffer to disk
+     */
+    std::string flush();
 
     sorter (sorter&& other);
 
     sorter (const sorter&) = delete;
 
 private:
-    std::string flush_buffer_safe (sorter_buffer* const buffer);
-    std::string flush_buffer (sorter_buffer* const buffer);
-
-    std::list<sorter_buffer> _buffers;
-    sorter_buffer* _current = 0;
+    sorter_buffer _buffer;
     const std::string _tmpdir;
     const size_t _bytes_per_buffer;
     std::string _file_prefix;
@@ -67,7 +65,6 @@ private:
     bool _merging_off = false;
     bool _flushing_in_progress = false;
     std::future<std::string> _flush_result;
-    std::exception_ptr _texception;
     const mapredo::base::keytype _type;
     const bool _reverse;
 };
