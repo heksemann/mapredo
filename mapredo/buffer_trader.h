@@ -19,11 +19,11 @@ public:
     /**
      * @param buffer_size size of each input buffer in bytes
      * @param num_buffers number of buffers to use
-     * @param num_threads number of consumer threads
+     * @param num_consumers number of consumer threads
      */
     buffer_trader (const size_t buffer_size,
 		   const size_t num_buffers,
-		   const size_t num_threads);
+		   const size_t num_consumers);
 
     /**
      * Get an empty buffer.  This function is called initially from
@@ -45,6 +45,7 @@ public:
     /**
      * Get the next buffer ready to be sorted.  This function may hang until
      * there is an available buffer.
+     * @returns filled buffer or nullptr if there will be no more data
      */
     input_buffer* consumer_get();
 
@@ -52,24 +53,31 @@ public:
      * Swap a now empty buffer with the next buffer ready to be
      * sorted.  This function may hang until there is an available
      * buffer.
+     * @param buffer emptied buffer
+     * @returns filled buffer or nullptr if there will be no more data
      */
     input_buffer* consumer_swap (input_buffer* buffer);
 
     /**
-     * There will be no more incoming data, hang until all buffers are emptied
+     * There will be no more incoming data, called by producer to hang
+     * until all consumer threads have finished.
      */
     void wait_emptied();
     
 private:
+    void consumer_finish();
+
     const size_t _buffer_size;
     const size_t _max_buffers;
+    const size_t _num_consumers;
     std::mutex _mutex;
-    std::condition_variable _cond;
+    int _waiting_final = 0;
+
     std::list<input_buffer> _all_buffers;
+    std::condition_variable _producer_cond;
+    std::condition_variable _consumer_cond;
     std::stack<input_buffer*> _filled_buffers;
     std::stack<input_buffer*> _empty_buffers;
-    std::stack<int> _waiting_consumers;
-    std::stack<int> _waiting_producers;
 };
 
 #endif
