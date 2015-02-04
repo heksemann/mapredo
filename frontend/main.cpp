@@ -17,6 +17,7 @@
 #include <mapredo/settings.h>
 #include <mapredo/engine.h>
 #include <mapredo/base.h>
+#include <mapredo/buffer_trader.h>
 #ifndef _WIN32
 #include <mapredo/plugin_loader.h>
 #include <mapredo/directory.h>
@@ -51,12 +52,11 @@ static void reduce (const std::string& plugin_file,
 		  << "\n";
     }
 
-    plugin_loader plugin (plugin_file);
-    auto& mapreducer (plugin.get());
-    engine mapred_engine (work_dir, subdir, parallel, 0, max_files);
+    engine mapred_engine (plugin_file, work_dir, subdir, parallel, 0,
+			  max_files);
     auto start_time (std::chrono::high_resolution_clock::now());
 
-    mapred_engine.reduce (mapreducer, plugin);
+    mapred_engine.reduce_existing_files();
 
     if (verbose)
     {
@@ -74,19 +74,21 @@ static void run (const std::string& plugin_file,
 		 const int max_files,
 		 const bool map_only)
 {
-    plugin_loader plugin (plugin_file);
-    auto& mapreducer (plugin.get());
-    engine mapred_engine (work_dir, subdir, parallel, buffer_size, max_files);
-    size_t buf_size = 0x10000;
-    std::unique_ptr<char[]> buf (new char[buf_size]);
-    size_t start = 0, end = 0;
+    engine mapred_engine (plugin_file, work_dir, subdir, parallel, buffer_size,
+			  max_files);
     size_t i;
     ssize_t bytes;
     std::string line;
     bool first = true;
     std::chrono::high_resolution_clock::time_point start_time;
+    buffer_trader& trader (mapred_engine.prepare_sorting());
+    input_buffer* current = trader.producer_get();
+    input_buffer* next = trader.producer_get();
+    size_t& start (current->start());
+    size_t& end (current->end());
+    char* buf (current->get());
 
-    while ((bytes = fread(buf.get() + end, 1, buf_size - end, stdin)) > 0)
+    while ((bytes = fread(buf + end, 1, current->capasity() - end, stdin)) > 0)
     {
 	end += bytes;
 	if (first)
@@ -95,12 +97,12 @@ static void run (const std::string& plugin_file,
 
 	    // Skip any Windows style UTF-8 header
 	    unsigned char u8header[] = {0xef, 0xbb, 0xbf};
-	    if (end - start >= 3 && memcmp(buf.get() + start, u8header, 3) == 0)
+	    if (end - start >= 3
+		&& memcmp(buf + start, u8header, 3) == 0)
 	    {
 		start += 3;
 	    }
 	    start_time = std::chrono::high_resolution_clock::now();
-	    mapred_engine.enable_sorters (mapreducer.type(), false);
 	    if (verbose)
 	    {
 		std::cerr << "Using working directory " << work_dir << "\n";
@@ -112,19 +114,24 @@ static void run (const std::string& plugin_file,
 	    }
 	}
 	for (i = end-1; i > start; i--) if (buf[i] == '\n') break;
-	    
+
 	if (start == i)
 	{
-	    throw std::runtime_error ("No newline found in input buffer");
+	    throw std::runtime_error ("No newlines found in input buffer");
 	}
-	// New buf here
-	end -= i;
-	start = 0;
-	memcpy (buf.get(), buf.get() + i, end);
+
+	next->end() = end - i;
+	memcpy (next->get(), buf + i, next->end());
+	input_buffer* tmp = trader.producer_swap (current);
+	current = next;
+	next = tmp;
+	start = current->start();
+	end = current->end();
+	buf = current->get();
     }
     if (first) return; // no input
 
-    // Wait
+    trader.wait_emptied();
 
     if (verbose)
     {
@@ -134,14 +141,13 @@ static void run (const std::string& plugin_file,
 
     if (!map_only)
     {
-	mapred_engine.flush (mapreducer, plugin);
+	mapred_engine.reduce();
 	if (verbose)
 	{
 	    std::cerr << "Merging finished in " << std::fixed
 		      << duration (start_time) << "s\n";
 	}
     }
-    else mapred_engine.flush();
 }
 
 static std::string get_default_workdir()
@@ -152,7 +158,7 @@ static std::string get_default_workdir()
 int
 main (int argc, char* argv[])
 {
-    int64_t buffer_size = 10 * 1024 * 1024;
+    int64_t buffer_size = 2 * 1024 * 1024;
     int parallel = std::thread::hardware_concurrency();
     int max_files = 20 * parallel;
     bool verbose = false;

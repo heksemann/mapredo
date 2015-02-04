@@ -5,21 +5,35 @@
 
 #include <memory>
 #include <deque>
+#include <list>
 
 #include "collector.h"
 #include "sorter.h"
 #include "file_merger.h"
 #include "base.h"
+#include "plugin_loader.h"
+#include "buffer_trader.h"
+#include "consumer.h"
 
-class plugin_loader;
+class buffer_trader;
 
 /**
  * Class used to run map reduce algorithm
  */
-class engine : public mapredo::collector
+class engine
 {
 public:
-    engine (const std::string& tmpdir,
+    /**
+     * @param loader plugin loader factory for creation of extra mapreducers
+     * @param tmpdir temporary directory
+     * @param subdirectory under temporary directory, may be empty
+     * @param parallel the number of worker threads
+     * @param bytes_buffer number of bytes in each sort buffer, must be at
+     *        least as high as parallel.
+     * @param max_open_files the maximum number of files open while merging
+     */
+    engine (const std::string& plugin,
+	    const std::string& tmpdir,
 	    const std::string& subdir,
 	    const size_t parallel,
 	    const size_t bytes_buffer,
@@ -27,50 +41,54 @@ public:
     virtual ~engine();
 
     /**
-     * Prepare for sorting.  This must be called before feeding mappers.
-     * @param numeric if true, sort numerically instead of alphabetically.
-     * @param reverse if true, sort in descending order instead of ascending.
+     * Set up consumer objects for mapping and sorting of input data
+     * @returns empty buffer which can be filled with data used with
+     *          provide_data().
      */
-    void enable_sorters (const mapredo::base::keytype type, const bool reverse);
+    input_buffer* prepare_sorting();
 
     /**
-     * Flush content of all sorted temporary files.
+     * Provide data to sorters.
+     * @param data input data to be provided
+     * @returns almost empty buffer, may contain some initial data
      */
-    void flush();
+    input_buffer* provide_data (input_buffer*& data);
 
     /**
-     * Go through all sorted temporary files and generate a reduced
-     * file.
-     * @param mapreducer mapreducer object
-     * @param loader plugin loader factory for creation of extra mapreducers
+     * Go through all sorted temporary files and generate a reduced file.
      */
-    void flush (mapredo::base& mapreducer, plugin_loader& loader);
+    void reduce();
 
     /**
-     * Reduce only.  Reduction is normally done inside flush, but this can be
-     * used to reduce existing files in subdir.
-     * @param mapreducer mapreducer object
-     * @param loader plugin loader factory for creation of extra mapreducers
+     * Reduce existing files only.  Reduction is normally done inside
+     * reduce(), but this can be used to reduce existing files in
+     * a sub-directory.
      */
-    void reduce (mapredo::base& mapreducer, plugin_loader& loader);
-
-    /** Used to collect data, called from mapper */
-    void collect (const char* line, const size_t length);
+    void reduce_existing_files();
 
 private:
     void merge_grouped (mapredo::base& mapreducer);
     void merge_sorted (mapredo::base& mapreducer);
     void output_final_files();
 
+    plugin_loader _plugin_loader;
+    buffer_trader _buffer_trader;
+    input_buffer *first_buffer;
+    input_buffer *second_buffer;
     const std::string _tmpdir;
     bool _is_subdir = false;
     size_t _parallel;
     size_t _bytes_buffer;
     int _max_files;
-    bool _unprepared = true;
     size_t _unique_id = 0;
+    enum stage {
+	UNPREPARED,
+	PREPARED,
+	ACTIVE
+    };
+    stage _sorting_stage = UNPREPARED;
 
-    std::vector<sorter> _sorters;
+    std::list<consumer> _consumers;
     std::deque<file_merger> _mergers;
     std::list<std::string> _files_final_merge;
 };

@@ -34,7 +34,9 @@ buffer_trader::producer_get()
 input_buffer*
 buffer_trader::producer_swap (input_buffer* buffer)
 {
+    std::cerr << "Producer wanna lock\n";
     std::unique_lock<std::mutex> lock(_mutex);
+    std::cerr << "Producer locked\n";
     bool was_empty = _filled_buffers.empty();
 
     _filled_buffers.push (buffer);
@@ -58,9 +60,11 @@ input_buffer*
 buffer_trader::consumer_get()
 {
     std::unique_lock<std::mutex> lock(_mutex);
+    std::cerr << "Consumer locked\n";
 
     while (!_waiting_final && _filled_buffers.empty())
     {
+	std::cerr << "Consumer " << _waiting_final << "\n";
 	_consumer_cond.wait (lock);
     }
 
@@ -138,6 +142,7 @@ buffer_trader::wait_emptied()
 void
 buffer_trader::consumer_finish()
 {
+    std::cerr << "Consumer finito " << _waiting_final << "\n";
     if (_waiting_final < 0)
     {
 	throw std::runtime_error (std::string("Incorrect use of ")

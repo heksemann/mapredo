@@ -6,43 +6,24 @@
 #endif
 
 #include "consumer.h"
-#include "collector.h"
-#ifndef _WIN32
-#include "directory.h"
-#include "plugin_loader.h"
-#else
-#include "directory_win32.h"
-#include "plugin_loader_win32.h"
-#endif
-#include "compression.h"
+#include "mapreducer.h"
 
-consumer::consumer (const std::string& tmpdir,
-		    const std::string& subdir,
+consumer::consumer (mapredo::base& mapreducer,
+		    const std::string& tmpdir,
+		    const bool is_subdir,
 		    const size_t buckets,
 		    const size_t bytes_buffer,
-		    const mapredo::base::keytype type,
 		    const bool reverse) :
-    _tmpdir (subdir.empty() ? tmpdir : (tmpdir + "/" + subdir)),
-    _is_subdir (subdir.size()),
+    _mapreducer (mapreducer),
+    _tmpdir (tmpdir),
+    _is_subdir (is_subdir),
     _buckets (buckets)
 {
-#ifndef _WIN32
-    if (access(tmpdir.c_str(), R_OK|W_OK|X_OK) != 0)
-#else
-    if (_access_s(tmpdir.c_str(), 0x06) != 0)
-#endif
-    {
-	throw std::runtime_error (tmpdir + " needs to be a writable directory");
-    }
-
-    if (_is_subdir)
-    {
-	if (!directory::exists(_tmpdir)) directory::create (_tmpdir);
-    }    
-
+    std::cerr << "CONSUMER STARTING\n";
     for (size_t i = 0; i < buckets; i++)
     {
-	_sorters.emplace_back (_tmpdir, i, bytes_buffer/buckets, type, reverse);
+	_sorters.emplace_back (_tmpdir, i, bytes_buffer,
+			       mapreducer.type(), reverse);
     }
 }
 
@@ -50,17 +31,38 @@ consumer::~consumer()
 {}
 
 void
-consumer::process (buffer_trader& trader)
+consumer::work (buffer_trader& trader)
 {
     auto* buffer = trader.consumer_get();
 
     if (!buffer) return;
-	
+
+    size_t pos;
+    char* buf = buffer->get();
+
     do
     {
-	
+	const size_t end = buffer->end();
+	size_t start = buffer->start();
+
+	while (start < end)
+	{
+	    for (pos = start; buf[pos] != '\n'; pos++) ;
+
+	    if (pos == start || buf[pos-1] != '\r')
+	    {
+		buf[pos] = '\0';
+		_mapreducer.map (buf + start, pos - start, *this);
+	    }
+	    else
+	    {
+		buf[pos-1] = '\0';
+		_mapreducer.map (buf + start, pos - start - 1, *this);
+	    }
+	    start = pos + 1;
+	}
     }
-    while ((buffer = trader.consumer_swap()));
+    while ((buffer = trader.consumer_swap(buffer)));
 }
 
 static unsigned int hash (const char* str, size_t siz)

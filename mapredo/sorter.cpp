@@ -18,9 +18,9 @@ sorter::sorter (const std::string& tmpdir,
 		const size_t bytes_buffer,
 		const mapredo::base::keytype type,
 		const bool reverse) :
-    _buffer (_bytes_per_buffer, 3.0),
+    _buffer (bytes_buffer, 3.0),
     _tmpdir (tmpdir),
-    _bytes_per_buffer (bytes_buffer/2),
+    _bytes_per_buffer (bytes_buffer),
     _type (type),
     _reverse (reverse)
 {
