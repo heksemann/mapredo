@@ -42,7 +42,6 @@ buffer_trader::producer_get()
 	return &_all_buffers.back();
     }
 
-    std::cerr << "FUCK\n";
     throw std::runtime_error
 	(std::string(__FUNCTION__) + " called too many times");
 }
@@ -115,6 +114,8 @@ buffer_trader::consumer_swap (input_buffer* buffer)
     
     bool was_empty = _empty_buffers.empty();
 
+    buffer->start() = 0;
+    buffer->end() = 0;
     _empty_buffers.push (buffer);
     if (was_empty) _producer_cond.notify_one();
     

@@ -35,7 +35,7 @@ public:
     engine (const std::string& plugin,
 	    const std::string& tmpdir,
 	    const std::string& subdir,
-	    const size_t parallel,
+	    const uint16_t parallel,
 	    const size_t bytes_buffer,
 	    const int max_open_files);
     virtual ~engine();

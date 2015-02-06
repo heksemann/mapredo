@@ -14,21 +14,22 @@
 #include "compression.h"
 
 sorter::sorter (const std::string& tmpdir,
-		const size_t index,
+		const uint16_t hash_index,
+		const uint16_t worker_index,
 		const size_t bytes_buffer,
 		const mapredo::base::keytype type,
 		const bool reverse) :
     _buffer (bytes_buffer, 3.0),
     _tmpdir (tmpdir),
     _bytes_per_buffer (bytes_buffer),
-    _index (index),
+    _index (hash_index),
     _type (type),
     _reverse (reverse)
 {
     std::ostringstream filename;
 
     filename << tmpdir << "/sort_" << std::this_thread::get_id()
-	     << '.' << index << '.';
+	     << ".h" << hash_index << ".w" << worker_index << ".n";
     _file_prefix = filename.str();
 
     if (settings::instance().compressed()) 
@@ -41,6 +42,7 @@ sorter::sorter (sorter&& other) :
     _buffer (std::move(other._buffer)),
     _tmpdir (std::move(other._tmpdir)),
     _bytes_per_buffer (other._bytes_per_buffer),
+    _index (other._index),
     _file_prefix (std::move(other._file_prefix)),
     _compressor (std::move(other._compressor)),
     _type (other._type),

@@ -25,7 +25,7 @@
 engine::engine (const std::string& plugin,
 		const std::string& tmpdir,
 		const std::string& subdir,
-		const size_t parallel,
+		const uint16_t parallel,
 		const size_t bytes_buffer,
 		const int max_open_files) :
     _plugin_loader (plugin),
@@ -57,10 +57,10 @@ engine::~engine()
 input_buffer*
 engine::prepare_input()
 {
-    for (size_t i = 0; i < _parallel; i++)
+    for (uint16_t i = 0; i < _parallel; i++)
     {
 	_consumers.emplace_back (_plugin_loader.get(), _tmpdir, _is_subdir,
-				 _parallel, _bytes_buffer, false);
+				 _parallel, i, _bytes_buffer, false);
 	_consumers.back().start_thread (_buffer_trader);
     }
 
@@ -118,7 +118,7 @@ engine::provide_input_data (input_buffer* data)
 	_buffers[1] = _buffer_trader.producer_get();
 	transfer_end (data, _buffers[1]);
 	_buffers[0] = _buffer_trader.producer_swap (data);
-	return _buffers[0];
+	return _buffers[1];
     default:
 	throw std::runtime_error
 	    ("engine::prepare_sorting must be called before engine::provide");
@@ -128,7 +128,10 @@ engine::provide_input_data (input_buffer* data)
 void
 engine::complete_input (input_buffer* data)
 {
-    _buffer_trader.producer_swap (data);
+    if (data->start() != data->end())
+    {
+	_buffer_trader.producer_swap (data);
+    }
     _buffer_trader.wait_emptied();
 
     for (auto& consumer: _consumers) consumer.join_thread();
@@ -146,21 +149,18 @@ engine::reduce()
 	{
 	    consumer.append_tmpfiles (i, tmpfiles);
 	}
-	std::cerr << "Count for " << i << "=" << tmpfiles.size() << "\n";
 	if (tmpfiles.size() == 1 && settings::instance().sort_output())
 	{
 	    _files_final_merge.push_back (tmpfiles.front());
 	}
 	else if (tmpfiles.size())
 	{
-	    std::cerr << "Push it real good\n";
 	    _mergers.push_back
 		(file_merger(_plugin_loader.get(),
 			     std::move(tmpfiles),
 			     _tmpdir, _unique_id++, 0x20000,
 			     _max_files/_parallel));
 	}
-	else std::cerr << i << " is empty\n";
     }
 
     auto& mapreducer (_plugin_loader.get());

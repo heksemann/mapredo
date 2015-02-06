@@ -1,4 +1,4 @@
-/*** -*- C++ -*- *********************************************************/
+// -*- C++ -*-
 
 #ifndef _HEXTREME_MAPREDO_CONSUMER_H
 #define _HEXTREME_MAPREDO_CONSUMER_H
@@ -30,7 +30,8 @@ public:
     consumer (mapredo::base& mapred,
 	      const std::string& tmpdir,
 	      const bool is_subdir,
-	      const size_t buckets,
+	      const uint16_t buckets,
+	      const uint16_t worker_id, 
 	      const size_t bytes_buffer,
 	      const bool reverse);
     virtual ~consumer();

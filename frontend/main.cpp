@@ -40,13 +40,13 @@ static void reduce (const std::string& plugin_file,
 		    const std::string& work_dir,
 		    const std::string& subdir,
 		    const bool verbose,
-		    const int parallel,
+		    const uint16_t parallel,
 		    const int max_files)
 {
     if (verbose)
     {
-	std::cerr << "Using working directory " << work_dir << "\n";
-	std::cerr << "Using " << parallel << " threads,"
+	std::cerr << "Using working directory " << work_dir << "\n"
+		  << "Using " << parallel << " threads,"
 		  << " with HW concurrency at "
 		  << std::thread::hardware_concurrency()
 		  << "\n";
@@ -70,75 +70,59 @@ static void run (const std::string& plugin_file,
 		 const std::string& subdir,
 		 const bool verbose,
 		 const size_t buffer_size,
-		 const int parallel,
+		 const uint16_t parallel,
 		 const int max_files,
 		 const bool map_only)
 {
     engine mapred_engine (plugin_file, work_dir, subdir, parallel, buffer_size,
 			  max_files);
-    size_t i;
     ssize_t bytes;
-    std::string line;
     bool first = true;
-    std::chrono::high_resolution_clock::time_point start_time;
-    buffer_trader& trader (mapred_engine.prepare_sorting());
-    input_buffer* current = trader.producer_get();
-    input_buffer* next = trader.producer_get();
-    size_t& start (current->start());
-    size_t& end (current->end());
-    char* buf (current->get());
+    std::chrono::high_resolution_clock::time_point start_time;    
+    input_buffer* buffer = mapred_engine.prepare_input();
 
-    while ((bytes = fread(buf + end, 1, current->capasity() - end, stdin)) > 0)
+    while ((bytes = fread(buffer->get() + buffer->end(), 1,
+			  buffer->capacity() - buffer->end(), stdin)) > 0)
     {
-	end += bytes;
+	buffer->end() += bytes;
 	if (first)
 	{
 	    first = false;
 
 	    // Skip any Windows style UTF-8 header
 	    unsigned char u8header[] = {0xef, 0xbb, 0xbf};
-	    if (end - start >= 3
-		&& memcmp(buf + start, u8header, 3) == 0)
+	    if (buffer->end() - buffer->start() >= 3
+		&& memcmp(buffer->get() + buffer->start(), u8header, 3) == 0)
 	    {
-		start += 3;
+		buffer->start() += 3;
 	    }
 	    start_time = std::chrono::high_resolution_clock::now();
 	    if (verbose)
 	    {
-		std::cerr << "Using working directory " << work_dir << "\n";
-		std::cerr << "Maximum buffer size is " << buffer_size
+		std::cerr << "Using working directory " << work_dir << "\n"
+			  << "Sort buffer size is " << buffer_size
 			  << " bytes.\nUsing " << parallel << " threads,"
 			  << " with HW concurrency at "
 			  << std::thread::hardware_concurrency()
 			  << "\n";
 	    }
 	}
-	for (i = end-1; i > start; i--) if (buf[i] == '\n') break;
 
-	if (start == i)
-	{
-	    throw std::runtime_error ("No newlines found in input buffer");
-	}
-
-	next->end() = end - i;
-	memcpy (next->get(), buf + i, next->end());
-	input_buffer* tmp = trader.producer_swap (current);
-	current = next;
-	next = tmp;
-	start = current->start();
-	end = current->end();
-	buf = current->get();
+	buffer = mapred_engine.provide_input_data (buffer);
+	std::ostringstream stream;
+	std::cerr << stream.str();
     }
-    if (first) return; // no input
 
-    trader.wait_emptied();
+    mapred_engine.complete_input (buffer);
+
+    if (first) return; // no input
 
     if (verbose)
     {
 	std::cerr << "Sorting finished in " << std::fixed
 		  << duration (start_time) << "s\n";
     }
-
+    
     if (!map_only)
     {
 	mapred_engine.reduce();
@@ -158,8 +142,8 @@ static std::string get_default_workdir()
 int
 main (int argc, char* argv[])
 {
-    int64_t buffer_size = 2 * 1024 * 1024;
-    int parallel = std::thread::hardware_concurrency();
+    int64_t buffer_size;
+    uint16_t parallel = std::thread::hardware_concurrency();
     int max_files = 20 * parallel;
     bool verbose = false;
     bool compression = true;
@@ -186,7 +170,7 @@ main (int argc, char* argv[])
 	     false, work_dir, "string", cmd);
 	TCLAP::ValueArg<std::string> bufferSizeArg
 	    ("b", "buffer-size", "Buffer size to use",
-	     false, "10M", "size", cmd);
+	     false, "2500k", "size", cmd);
 	TCLAP::ValueArg<int> maxFilesArg
 	    ("f", "max-open-files", "Maximum number of open files",
 	     false, max_files, "number", cmd);

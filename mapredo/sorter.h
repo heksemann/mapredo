@@ -27,7 +27,8 @@ public:
      * @param reverse sort in descending order if true
      */
     sorter (const std::string& tmpdir,
-	    const size_t index,
+	    const uint16_t hash_index,
+	    const uint16_t worker_index,
 	    const size_t max_bytes_buffer,
 	    const mapredo::base::keytype type,
 	    const bool reverse);
@@ -50,8 +51,8 @@ public:
      */
     void flush();
 
-    /** @returns index number as given to the constructor */
-    size_t index() const {return _index;}
+    /** @returns hash index number as given to the constructor */
+    uint16_t hash_index() const {return _index;}
 
     sorter (sorter&& other);
 
@@ -61,7 +62,7 @@ private:
     sorter_buffer _buffer;
     const std::string _tmpdir;
     const size_t _bytes_per_buffer;
-    size_t _index;
+    uint16_t _index;
     std::string _file_prefix;
     int _tmpfile_id = 0;
     std::list<std::string> _tmpfiles;

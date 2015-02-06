@@ -11,7 +11,8 @@
 consumer::consumer (mapredo::base& mapreducer,
 		    const std::string& tmpdir,
 		    const bool is_subdir,
-		    const size_t buckets,
+		    const uint16_t buckets,
+		    const uint16_t worker_id,
 		    const size_t bytes_buffer,
 		    const bool reverse) :
     _mapreducer (mapreducer),
@@ -21,7 +22,7 @@ consumer::consumer (mapredo::base& mapreducer,
 {
     for (size_t i = 0; i < buckets; i++)
     {
-	_sorters.emplace_back (_tmpdir, i, bytes_buffer,
+	_sorters.emplace_back (_tmpdir, i, worker_id, bytes_buffer,
 			       mapreducer.type(), reverse);
     }
 }
@@ -95,9 +96,8 @@ consumer::work (buffer_trader& trader)
 
     for (auto& sorter: _sorters)
     {
-	if (sorter.index() > 1)std::cerr << "Flusing " << sorter.index() << "\n";
 	sorter.flush();
-	_tmpfiles[sorter.index()] = sorter.grab_tmpfiles();
+	_tmpfiles[sorter.hash_index()] = sorter.grab_tmpfiles();
     }
     _sorters.clear();
 }
