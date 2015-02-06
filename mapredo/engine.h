@@ -18,7 +18,7 @@
 class buffer_trader;
 
 /**
- * Class used to run map reduce algorithm
+ * Runs overall map-reduce algorithm
  */
 class engine
 {
@@ -42,17 +42,25 @@ public:
 
     /**
      * Set up consumer objects for mapping and sorting of input data
-     * @returns empty buffer which can be filled with data used with
-     *          provide_data().
+     * @returns empty buffer which can be filled with data before calling
+     *          provide_input_data() or complete_input().
      */
-    input_buffer* prepare_sorting();
+    input_buffer* prepare_input();
 
     /**
      * Provide data to sorters.
-     * @param data input data to be provided
-     * @returns almost empty buffer, may contain some initial data
+     * @param data input data to be provided.
+     * @returns buffer with room for more data.
      */
-    input_buffer* provide_data (input_buffer*& data);
+    input_buffer* provide_input_data (input_buffer* data);
+
+    /**
+     * Wait until input phase is completed.
+     * @param data the last input_buffer returned by
+     *             provide_input_data(), or prepare_input() if
+     *             provide_input_data() was never called.
+     */
+    void complete_input (input_buffer* data);
 
     /**
      * Go through all sorted temporary files and generate a reduced file.
@@ -72,9 +80,7 @@ private:
     void output_final_files();
 
     plugin_loader _plugin_loader;
-    buffer_trader _buffer_trader;
-    input_buffer *first_buffer;
-    input_buffer *second_buffer;
+    input_buffer* _buffers[2];
     const std::string _tmpdir;
     bool _is_subdir = false;
     size_t _parallel;
@@ -89,6 +95,8 @@ private:
     stage _sorting_stage = UNPREPARED;
 
     std::list<consumer> _consumers;
+    buffer_trader _buffer_trader;
+
     std::deque<file_merger> _mergers;
     std::list<std::string> _files_final_merge;
 };

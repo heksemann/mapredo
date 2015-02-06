@@ -21,7 +21,7 @@ class sorter
 public:
     /**
      * @param tmpdir where to save temporary files
-     * @param index unique number used in filenames
+     * @param index number used in filenames
      * @param max_bytes_buffer number of bytes in each buffer to sort
      * @param type type of key to sort on
      * @param reverse sort in descending order if true
@@ -48,7 +48,10 @@ public:
     /**
      * Sort and flush current buffer to disk
      */
-    std::string flush();
+    void flush();
+
+    /** @returns index number as given to the constructor */
+    size_t index() const {return _index;}
 
     sorter (sorter&& other);
 
@@ -58,6 +61,7 @@ private:
     sorter_buffer _buffer;
     const std::string _tmpdir;
     const size_t _bytes_per_buffer;
+    size_t _index;
     std::string _file_prefix;
     int _tmpfile_id = 0;
     std::list<std::string> _tmpfiles;

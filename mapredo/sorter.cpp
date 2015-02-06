@@ -21,6 +21,7 @@ sorter::sorter (const std::string& tmpdir,
     _buffer (bytes_buffer, 3.0),
     _tmpdir (tmpdir),
     _bytes_per_buffer (bytes_buffer),
+    _index (index),
     _type (type),
     _reverse (reverse)
 {
@@ -70,12 +71,7 @@ sorter::add (const char* keyvalue, const size_t size)
 	{
 	    double ratio = _buffer.ideal_ratio();
 
-	    std::string filename;
-	    filename = flush();
-	    if (!filename.empty())
-	    {
-		_tmpfiles.push_back ((std::string&&)filename);
-	    }
+	    flush();
 	    _buffer.tune (ratio);
 	}
 	else flush();
@@ -129,11 +125,11 @@ static bool sorter_rd (const lookup& left, const lookup& right)
     return atof (left.keyvalue()) > atof (right.keyvalue());
 }
 
-std::string
+void
 sorter::flush()
 {
-    if (_buffer.lookup_used() == 0) return "";
-    //std::cerr << "Before sorting " << _buffer.lookup_used()  << "\n";
+    if (_buffer.lookup_used() == 0) return;
+
     switch (_type)
     {
     case mapredo::base::STRING:
@@ -182,7 +178,6 @@ sorter::flush()
                                   " in mapredo::base");
 	break;
     }
-    //std::cerr << "After sorting\n";
 
     std::ofstream tmpfile;
     std::ostringstream filename;
@@ -253,6 +248,5 @@ sorter::flush()
 
     tmpfile.close();
     _buffer.clear();
-
-    return (filename.str());
+    _tmpfiles.push_back (std::move(filename.str()));
 }

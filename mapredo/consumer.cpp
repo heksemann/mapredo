@@ -19,7 +19,6 @@ consumer::consumer (mapredo::base& mapreducer,
     _is_subdir (is_subdir),
     _buckets (buckets)
 {
-    std::cerr << "CONSUMER STARTING\n";
     for (size_t i = 0; i < buckets; i++)
     {
 	_sorters.emplace_back (_tmpdir, i, bytes_buffer,
@@ -28,7 +27,36 @@ consumer::consumer (mapredo::base& mapreducer,
 }
 
 consumer::~consumer()
-{}
+{
+    if (_thread.joinable()) _thread.join();
+}
+
+void
+consumer::start_thread (buffer_trader& trader)
+{
+    _thread = std::thread (&consumer::work, this, std::ref(trader));
+}
+
+void
+consumer::join_thread()
+{
+    _thread.join();
+}
+
+void
+consumer::append_tmpfiles (const size_t index, std::list<std::string>& files)
+{
+    auto iter (_tmpfiles.find (index));
+
+    if (iter == _tmpfiles.end())
+    {
+	std::ostringstream message;
+	message << "Tried to access unknown tmpfile index " << index << " in "
+		<<__FUNCTION__;
+	throw std::runtime_error (message.str());
+    }
+    files.splice (files.end(), iter->second);
+}
 
 void
 consumer::work (buffer_trader& trader)
@@ -36,6 +64,7 @@ consumer::work (buffer_trader& trader)
     auto* buffer = trader.consumer_get();
 
     if (!buffer) return;
+    std::stringstream stream;
 
     size_t pos;
     char* buf = buffer->get();
@@ -47,7 +76,7 @@ consumer::work (buffer_trader& trader)
 
 	while (start < end)
 	{
-	    for (pos = start; buf[pos] != '\n'; pos++) ;
+	    for (pos = start; pos < end && buf[pos] != '\n'; pos++) ;
 
 	    if (pos == start || buf[pos-1] != '\r')
 	    {
@@ -63,6 +92,14 @@ consumer::work (buffer_trader& trader)
 	}
     }
     while ((buffer = trader.consumer_swap(buffer)));
+
+    for (auto& sorter: _sorters)
+    {
+	if (sorter.index() > 1)std::cerr << "Flusing " << sorter.index() << "\n";
+	sorter.flush();
+	_tmpfiles[sorter.index()] = sorter.grab_tmpfiles();
+    }
+    _sorters.clear();
 }
 
 static unsigned int hash (const char* str, size_t siz)

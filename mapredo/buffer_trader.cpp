@@ -16,6 +16,21 @@ buffer_trader::buffer_trader (const size_t buffer_size,
     }
 }
 
+buffer_trader::~buffer_trader()
+{
+    std::unique_lock<std::mutex> lock(_mutex);
+
+    if (_waiting_final != -1)
+    {
+	while (!_filled_buffers.empty()) _filled_buffers.pop();
+	_waiting_final = _num_consumers;
+	_consumer_cond.notify_all();
+
+	do _producer_cond.wait (lock);
+	while (_waiting_final != -1);
+    }
+}
+
 input_buffer*
 buffer_trader::producer_get()
 {
@@ -27,6 +42,7 @@ buffer_trader::producer_get()
 	return &_all_buffers.back();
     }
 
+    std::cerr << "FUCK\n";
     throw std::runtime_error
 	(std::string(__FUNCTION__) + " called too many times");
 }
@@ -34,9 +50,7 @@ buffer_trader::producer_get()
 input_buffer*
 buffer_trader::producer_swap (input_buffer* buffer)
 {
-    std::cerr << "Producer wanna lock\n";
     std::unique_lock<std::mutex> lock(_mutex);
-    std::cerr << "Producer locked\n";
     bool was_empty = _filled_buffers.empty();
 
     _filled_buffers.push (buffer);
@@ -60,11 +74,9 @@ input_buffer*
 buffer_trader::consumer_get()
 {
     std::unique_lock<std::mutex> lock(_mutex);
-    std::cerr << "Consumer locked\n";
 
     while (!_waiting_final && _filled_buffers.empty())
     {
-	std::cerr << "Consumer " << _waiting_final << "\n";
 	_consumer_cond.wait (lock);
     }
 
@@ -76,7 +88,6 @@ buffer_trader::consumer_get()
 	return buffer;
     }
 
-    std::cerr << "Finished0\n";
     consumer_finish();
     return nullptr;
 }
@@ -90,13 +101,11 @@ buffer_trader::consumer_swap (input_buffer* buffer)
     {
 	if (_filled_buffers.empty())
 	{
-	    std::cerr << "Finished1\n";
 	    consumer_finish();
 	    return nullptr;
 	}
 	else
 	{
-	    std::cerr << "Almost finished\n";
 	    buffer = _filled_buffers.top();
 	    _filled_buffers.pop();
 
@@ -119,9 +128,8 @@ buffer_trader::consumer_swap (input_buffer* buffer)
 	_filled_buffers.pop();
 
 	return buffer;
-    }    
+    }
 
-    std::cerr << "Finished3\n";
     consumer_finish();
     return nullptr;
 }
@@ -130,7 +138,7 @@ void
 buffer_trader::wait_emptied()
 {
     std::unique_lock<std::mutex> lock(_mutex);
-    std::cerr << "Final wait " << _filled_buffers.size() << "\n";
+    if (_waiting_final == -1) return;
 
     _waiting_final = _num_consumers;
     _consumer_cond.notify_all();
@@ -142,7 +150,6 @@ buffer_trader::wait_emptied()
 void
 buffer_trader::consumer_finish()
 {
-    std::cerr << "Consumer finito " << _waiting_final << "\n";
     if (_waiting_final < 0)
     {
 	throw std::runtime_error (std::string("Incorrect use of ")

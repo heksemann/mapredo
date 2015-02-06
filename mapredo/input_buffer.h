@@ -9,20 +9,20 @@ class input_buffer
 {
 public:
     input_buffer (const size_t bytes) :
-	_buf(new char[bytes]), _capasity (bytes) {}
+	_buf(new char[bytes+1]), _capacity (bytes) {}
 
     /** Get pointer to correctly sized buffer */
     char* get() {return _buf.get();}
 
-    /** Get buffer capasity in bytes */
-    size_t capasity() const {return _capasity;}
+    /** Get buffer capacity in bytes */
+    size_t capacity() const {return _capacity;}
 
     /**
-     * Increase buffer capasity.  The actual capasity reserved may be
+     * Increase buffer capacity.  The actual capacity reserved may be
      * bigger than the requested number of bytes.
      * @param bytes number of bytes to fit in buffer
      */
-    void increase_capasity (size_t bytes) {
+    void increase_capacity (size_t bytes) {
 	abort();
     }
 
@@ -34,7 +34,7 @@ public:
 
 private:
     std::unique_ptr<char[]> _buf;
-    size_t _capasity;
+    size_t _capacity;
     size_t _start = 0;
     size_t _end = 0;
 };

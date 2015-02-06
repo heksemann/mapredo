@@ -29,12 +29,12 @@ engine::engine (const std::string& plugin,
 		const size_t bytes_buffer,
 		const int max_open_files) :
     _plugin_loader (plugin),
-    _buffer_trader (0x10000, parallel * 2, parallel),
     _tmpdir (subdir.empty() ? tmpdir : (tmpdir + "/" + subdir)),
     _is_subdir (subdir.size()),
     _parallel (parallel),
     _bytes_buffer (bytes_buffer),
-    _max_files (max_open_files)
+    _max_files (max_open_files),
+    _buffer_trader (0x10000, parallel * 2 + 1, parallel)
 {
 #ifndef _WIN32
     if (access(tmpdir.c_str(), R_OK|W_OK|X_OK) != 0)
@@ -54,67 +54,118 @@ engine::engine (const std::string& plugin,
 engine::~engine()
 {}
 
-input_buffer&
-engine::prepare_sorting()
+input_buffer*
+engine::prepare_input()
 {
     for (size_t i = 0; i < _parallel; i++)
     {
 	_consumers.emplace_back (_plugin_loader.get(), _tmpdir, _is_subdir,
-				 _parallel, _bytes_buffer, false);	
+				 _parallel, _bytes_buffer, false);
+	_consumers.back().start_thread (_buffer_trader);
     }
 
     _sorting_stage = PREPARED;
-    return _buffer_trader.producer_get();
+    _buffers[0] = _buffer_trader.producer_get(); 
+    return _buffers[0];
 }
 
-input_buffer&
-engine::provide_data (input_buffer*& data)
+static void
+transfer_end (input_buffer* current, input_buffer* next)
+{
+    size_t& start (current->start());
+    char* buf (current->get());
+
+    for (size_t i = current->end() - 1; i > start; i--)
+    {
+	if (buf[i] == '\n')
+	{
+	    next->end() = current->end() - i;
+	    memcpy (next->get(), buf + i, next->end());
+	    return;
+	}
+    }
+
+    throw std::runtime_error ("No newlines found in input buffer");
+}
+
+input_buffer*
+engine::provide_input_data (input_buffer* data)
 {
     switch (_sorting_stage)
     {
     case ACTIVE:
-	break;
+    {
+	if (data == _buffers[0])
+	{
+	    transfer_end (data, _buffers[1]);
+	    _buffers[0] = _buffer_trader.producer_swap (data);
+	    return _buffers[1];
+	}
+	else if (data == _buffers[1])
+	{
+	    transfer_end (data, _buffers[0]);
+	    _buffers[1] = _buffer_trader.producer_swap (data);
+	    return _buffers[0];
+	}
+	else
+	{
+	    throw std::runtime_error
+		(std::string(__FUNCTION__) + " called with incorrect buffer");
+	}
+    }
     case PREPARED:
 	_sorting_stage = ACTIVE;
-	_second_buffer = _buffer_trader.producer_get();
-	return _second_buffer;
-    case UNPREPARED:
+	_buffers[1] = _buffer_trader.producer_get();
+	transfer_end (data, _buffers[1]);
+	_buffers[0] = _buffer_trader.producer_swap (data);
+	return _buffers[0];
+    default:
 	throw std::runtime_error
 	    ("engine::prepare_sorting must be called before engine::provide");
-	break;
     }
-	
-    else return _buffer_trader.producer_swap ();
+}
+
+void
+engine::complete_input (input_buffer* data)
+{
+    _buffer_trader.producer_swap (data);
+    _buffer_trader.wait_emptied();
+
+    for (auto& consumer: _consumers) consumer.join_thread();
 }
 
 void
 engine::reduce()
 {
-#if 0
-    for (auto& sorter: _sorters)
+    std::cerr << "Reducing!\n";
+    for (size_t i = 0; i < _parallel; i++)
     {
-	sorter.flush();
-	std::list<std::string> tmpfiles (sorter.grab_tmpfiles());
+	std::list<std::string> tmpfiles;
 
+	for (auto& consumer: _consumers)
+	{
+	    consumer.append_tmpfiles (i, tmpfiles);
+	}
+	std::cerr << "Count for " << i << "=" << tmpfiles.size() << "\n";
 	if (tmpfiles.size() == 1 && settings::instance().sort_output())
 	{
 	    _files_final_merge.push_back (tmpfiles.front());
 	}
 	else if (tmpfiles.size())
 	{
+	    std::cerr << "Push it real good\n";
 	    _mergers.push_back
 		(file_merger(_plugin_loader.get(),
-			     static_cast<std::list<std::string>&&>(tmpfiles),
+			     std::move(tmpfiles),
 			     _tmpdir, _unique_id++, 0x20000,
 			     _max_files/_parallel));
 	}
+	else std::cerr << i << " is empty\n";
     }
-    _sorters.clear();
 
     auto& mapreducer (_plugin_loader.get());
     if (settings::instance().sort_output()) merge_sorted (mapreducer);
     else merge_grouped (mapreducer);
-#endif
 }
 
 void

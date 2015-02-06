@@ -11,7 +11,9 @@
 #include "input_buffer.h"
 
 /**
- * Used to keep track of input buffers in memory.  This class is thread safe.
+ * Used to keep track of input buffers in memory.  This class is
+ * thread safe, but needs to be be used with caution.  Specifically,
+ * it should be destroyed before the consumer threads.
  */
 class buffer_trader
 {
@@ -24,6 +26,7 @@ public:
     buffer_trader (const size_t buffer_size,
 		   const size_t num_buffers,
 		   const size_t num_consumers);
+    ~buffer_trader();
 
     /**
      * Get an empty buffer.  This function is called initially from
@@ -59,8 +62,8 @@ public:
     input_buffer* consumer_swap (input_buffer* buffer);
 
     /**
-     * There will be no more incoming data, called by producer to hang
-     * until all consumer threads have finished.
+     * Indicate that there will be no more incoming data, called by
+     * producer to hang until all consumer threads have finished.
      */
     void wait_emptied();
     
