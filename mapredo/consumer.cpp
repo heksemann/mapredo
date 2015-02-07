@@ -49,14 +49,7 @@ consumer::append_tmpfiles (const size_t index, std::list<std::string>& files)
 {
     auto iter (_tmpfiles.find (index));
 
-    if (iter == _tmpfiles.end())
-    {
-	std::ostringstream message;
-	message << "Tried to access unknown tmpfile index " << index << " in "
-		<<__FUNCTION__;
-	throw std::runtime_error (message.str());
-    }
-    files.splice (files.end(), iter->second);
+    if (iter != _tmpfiles.end()) files.splice (files.end(), iter->second);
 }
 
 void
@@ -68,12 +61,12 @@ consumer::work (buffer_trader& trader)
     std::stringstream stream;
 
     size_t pos;
-    char* buf = buffer->get();
 
     do
     {
-	const size_t end = buffer->end();
+	char* buf = buffer->get();
 	size_t start = buffer->start();
+	const size_t end = buffer->end();
 
 	while (start < end)
 	{

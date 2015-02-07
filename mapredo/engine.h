@@ -80,19 +80,13 @@ private:
     void output_final_files();
 
     plugin_loader _plugin_loader;
-    input_buffer* _buffers[2];
+    input_buffer* _next_buffer = 0;
     const std::string _tmpdir;
     bool _is_subdir = false;
     size_t _parallel;
     size_t _bytes_buffer;
     int _max_files;
     size_t _unique_id = 0;
-    enum stage {
-	UNPREPARED,
-	PREPARED,
-	ACTIVE
-    };
-    stage _sorting_stage = UNPREPARED;
 
     std::list<consumer> _consumers;
     buffer_trader _buffer_trader;

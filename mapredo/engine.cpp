@@ -34,7 +34,7 @@ engine::engine (const std::string& plugin,
     _parallel (parallel),
     _bytes_buffer (bytes_buffer),
     _max_files (max_open_files),
-    _buffer_trader (0x10000, parallel * 2 + 1, parallel)
+    _buffer_trader (0x100000, parallel + 2, parallel)
 {
 #ifndef _WIN32
     if (access(tmpdir.c_str(), R_OK|W_OK|X_OK) != 0)
@@ -57,6 +57,13 @@ engine::~engine()
 input_buffer*
 engine::prepare_input()
 {
+    if (_next_buffer)
+    {
+	throw std::runtime_error (std::string("engine::") + __FUNCTION__
+				  + " shall only be called once");
+    }
+    _next_buffer = _buffer_trader.producer_get();
+
     for (uint16_t i = 0; i < _parallel; i++)
     {
 	_consumers.emplace_back (_plugin_loader.get(), _tmpdir, _is_subdir,
@@ -64,65 +71,48 @@ engine::prepare_input()
 	_consumers.back().start_thread (_buffer_trader);
     }
 
-    _sorting_stage = PREPARED;
-    _buffers[0] = _buffer_trader.producer_get(); 
-    return _buffers[0];
+    return _buffer_trader.producer_get();
 }
 
 static void
 transfer_end (input_buffer* current, input_buffer* next)
 {
-    size_t& start (current->start());
+    const size_t start (current->start());
     char* buf (current->get());
 
-    for (size_t i = current->end() - 1; i > start; i--)
+    for (size_t i = current->end(); i > start; i--)
     {
-	if (buf[i] == '\n')
+	if (buf[i-1] == '\n')
 	{
 	    next->end() = current->end() - i;
-	    memcpy (next->get(), buf + i, next->end());
+	    if (next->end() > 0)
+	    {
+		memcpy (next->get(), buf + i, next->end());
+		current->end() = i;
+	    }
 	    return;
 	}
     }
 
-    throw std::runtime_error ("No newlines found in input buffer");
+    throw std::runtime_error ("No newlines found in input buffer: \""
+			      + std::string(buf, current->end() - start)
+			      + "\"");
 }
 
 input_buffer*
 engine::provide_input_data (input_buffer* data)
 {
-    switch (_sorting_stage)
+    if (!_next_buffer)
     {
-    case ACTIVE:
-    {
-	if (data == _buffers[0])
-	{
-	    transfer_end (data, _buffers[1]);
-	    _buffers[0] = _buffer_trader.producer_swap (data);
-	    return _buffers[1];
-	}
-	else if (data == _buffers[1])
-	{
-	    transfer_end (data, _buffers[0]);
-	    _buffers[1] = _buffer_trader.producer_swap (data);
-	    return _buffers[0];
-	}
-	else
-	{
-	    throw std::runtime_error
-		(std::string(__FUNCTION__) + " called with incorrect buffer");
-	}
-    }
-    case PREPARED:
-	_sorting_stage = ACTIVE;
-	_buffers[1] = _buffer_trader.producer_get();
-	transfer_end (data, _buffers[1]);
-	_buffers[0] = _buffer_trader.producer_swap (data);
-	return _buffers[1];
-    default:
 	throw std::runtime_error
-	    ("engine::prepare_sorting must be called before engine::provide");
+	    ("engine::prepare_sorting() must be called before"
+	     " engine::provide_input_data()");
     }
+
+    transfer_end (data, _next_buffer);
+    auto* current = _next_buffer;
+    _next_buffer = _buffer_trader.producer_swap (data);
+    return current;
 }
 
 void
@@ -140,7 +130,6 @@ engine::complete_input (input_buffer* data)
 void
 engine::reduce()
 {
-    std::cerr << "Reducing!\n";
     for (size_t i = 0; i < _parallel; i++)
     {
 	std::list<std::string> tmpfiles;
@@ -378,13 +367,6 @@ engine::output_final_files()
 		    fwrite (buf.get(), outsize, 1, stdout);
 		    start += insize;
 		    insize = end - start;
-#if 0
-		    std::cerr << "Insize " << insize
-			      << " start " << start
-			      << " end " << end
-			      << " Outsize " << outsize
-			      << "\n";
-#endif
 		    outsize = bufsize;
 		}
 

@@ -23,7 +23,7 @@ public:
      * @param bytes number of bytes to fit in buffer
      */
     void increase_capacity (size_t bytes) {
-	abort();
+	abort(); // not yet implemented
     }
 
     /** Start of buffer */

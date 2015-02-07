@@ -76,7 +76,7 @@ static void run (const std::string& plugin_file,
 {
     engine mapred_engine (plugin_file, work_dir, subdir, parallel, buffer_size,
 			  max_files);
-    ssize_t bytes;
+    size_t bytes;
     bool first = true;
     std::chrono::high_resolution_clock::time_point start_time;    
     input_buffer* buffer = mapred_engine.prepare_input();
@@ -109,8 +109,6 @@ static void run (const std::string& plugin_file,
 	}
 
 	buffer = mapred_engine.provide_input_data (buffer);
-	std::ostringstream stream;
-	std::cerr << stream.str();
     }
 
     mapred_engine.complete_input (buffer);
@@ -143,7 +141,7 @@ int
 main (int argc, char* argv[])
 {
     int64_t buffer_size;
-    uint16_t parallel = std::thread::hardware_concurrency();
+    uint16_t parallel = std::thread::hardware_concurrency() + 1;
     int max_files = 20 * parallel;
     bool verbose = false;
     bool compression = true;
@@ -170,7 +168,7 @@ main (int argc, char* argv[])
 	     false, work_dir, "string", cmd);
 	TCLAP::ValueArg<std::string> bufferSizeArg
 	    ("b", "buffer-size", "Buffer size to use",
-	     false, "2500k", "size", cmd);
+	     false, "2M", "size", cmd);
 	TCLAP::ValueArg<int> maxFilesArg
 	    ("f", "max-open-files", "Maximum number of open files",
 	     false, max_files, "number", cmd);
