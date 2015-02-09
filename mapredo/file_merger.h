@@ -85,7 +85,7 @@ private:
     std::unique_ptr<char[]> _coutbuffer;
     size_t _cinbufpos;
     size_t _coutbufpos;
-    std::exception_ptr _texception;
+    std::exception_ptr _texception = nullptr;
 };
 
 template <typename T> void

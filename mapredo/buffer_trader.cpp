@@ -17,19 +17,7 @@ buffer_trader::buffer_trader (const size_t buffer_size,
 }
 
 buffer_trader::~buffer_trader()
-{
-    std::unique_lock<std::mutex> lock(_mutex);
-
-    if (_waiting_final != -1)
-    {
-	while (!_filled_buffers.empty()) _filled_buffers.pop();
-	_waiting_final = _num_consumers;
-	_consumer_cond.notify_all();
-
-	do _producer_cond.wait (lock);
-	while (_waiting_final != -1);
-    }
-}
+{}
 
 input_buffer*
 buffer_trader::producer_get()
@@ -43,13 +31,16 @@ buffer_trader::producer_get()
     }
 
     throw std::runtime_error
-	(std::string(__FUNCTION__) + " called too many times");
+	("buffer_trader::producer_get() called too many times");
 }
 
 input_buffer*
 buffer_trader::producer_swap (input_buffer* buffer)
 {
     std::unique_lock<std::mutex> lock(_mutex);
+
+    if (_finished) return nullptr;
+
     bool was_empty = _filled_buffers.empty();
 
     _filled_buffers.push (buffer);
@@ -61,7 +52,12 @@ buffer_trader::producer_swap (input_buffer* buffer)
 	return &_all_buffers.back();
     }
 
-    while (_empty_buffers.empty()) _producer_cond.wait (lock);
+    while (_empty_buffers.empty() && !_finished)
+    {
+	_producer_cond.wait (lock);
+    }
+
+    if (_finished) return nullptr;
 
     buffer = _empty_buffers.top();
     _empty_buffers.pop();
@@ -74,12 +70,12 @@ buffer_trader::consumer_get()
 {
     std::unique_lock<std::mutex> lock(_mutex);
 
-    while (!_waiting_final && _filled_buffers.empty())
+    while (!_finished && _filled_buffers.empty())
     {
 	_consumer_cond.wait (lock);
     }
 
-    if (_filled_buffers.size())
+    if (_filled_buffers.size() && (!_finished || _success))
     {
 	auto* buffer = _filled_buffers.top();
 	_filled_buffers.pop();
@@ -87,7 +83,6 @@ buffer_trader::consumer_get()
 	return buffer;
     }
 
-    consumer_finish();
     return nullptr;
 }
 
@@ -96,13 +91,9 @@ buffer_trader::consumer_swap (input_buffer* buffer)
 {
     std::unique_lock<std::mutex> lock(_mutex);
 
-    if (_waiting_final)
+    if (_finished)
     {
-	if (_filled_buffers.empty())
-	{
-	    consumer_finish();
-	    return nullptr;
-	}
+	if (_filled_buffers.empty() || !_success) return nullptr;
 	else
 	{
 	    buffer = _filled_buffers.top();
@@ -119,11 +110,11 @@ buffer_trader::consumer_swap (input_buffer* buffer)
     _empty_buffers.push (buffer);
     if (was_empty) _producer_cond.notify_one();
     
-    while (!_waiting_final && _filled_buffers.empty())
+    while (!_finished && _filled_buffers.empty())
     {
 	_consumer_cond.wait (lock);
     }
-    if (_filled_buffers.size())
+    if (_filled_buffers.size()  && (!_finished || _success))
     {
 	buffer = _filled_buffers.top();
 	_filled_buffers.pop();
@@ -131,35 +122,19 @@ buffer_trader::consumer_swap (input_buffer* buffer)
 	return buffer;
     }
 
-    consumer_finish();
     return nullptr;
 }
 
 void
-buffer_trader::wait_emptied()
+buffer_trader::finish (const bool success)
 {
     std::unique_lock<std::mutex> lock(_mutex);
-    if (_waiting_final == -1) return;
 
-    _waiting_final = _num_consumers;
-    _consumer_cond.notify_all();
-
-    do _producer_cond.wait (lock);
-    while (_waiting_final != -1);
-}
-
-void
-buffer_trader::consumer_finish()
-{
-    if (_waiting_final < 0)
+    if (!_finished)
     {
-	throw std::runtime_error (std::string("Incorrect use of ")
-				  + __FUNCTION__);
-    }
-    _waiting_final--;
-    if (_waiting_final == 0)
-    {
-	_waiting_final = -1;
-	_producer_cond.notify_one();
+	_finished = true;
+	_success = success;
+	_consumer_cond.notify_all();
+	_producer_cond.notify_all();
     }
 }

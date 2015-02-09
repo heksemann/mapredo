@@ -13,6 +13,13 @@ endif()
 
 include_directories(BEFORE ${PROJECT_SOURCE_DIR})
 
+set(PROJECT_VERSION 0.2.0)
+set(ARCHIVE_NAME ${CMAKE_PROJECT_NAME}-${PROJECT_VERSION})
+add_custom_target(dist
+  COMMAND git archive --prefix=${ARCHIVE_NAME}/ HEAD
+  | bzip2 > ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.bz2
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
 set (CPACK_PACKAGE_VERSION_MAJOR 0)
 set (CPACK_PACKAGE_VERSION_MINOR 1)
 set (CPACK_PACKAGE_VERSION_PATCH 0)
@@ -30,7 +37,7 @@ include (GNUInstallDirs)
 
 configure_file (
   "${mapredo_SOURCE_DIR}/mapredo.spec.in"
-  "${mapredo_SOURCE_DIR}/mapredo.spec")
+  "${mapredo_BINARY_DIR}/mapredo.spec")
 
 enable_testing()
 find_package(GTest REQUIRED)

@@ -53,6 +53,12 @@ public:
     /** Used to collect data, called from the mapper */
     void collect (const char* line, const size_t length);
 
+    /**
+     * @returns a thread exception if it occured or nullptr otherwise.
+     *          Do not call this until the thread has been joined.
+     */
+    std::exception_ptr& exception_ptr() {return _texception;}
+
 
     consumer(consumer&&) = delete;
     consumer& operator=(const consumer&) = delete;
@@ -65,7 +71,7 @@ private:
     const std::string _tmpdir;
     bool _is_subdir = false;
     size_t _buckets;
-    std::exception_ptr _texception;
+    std::exception_ptr _texception = nullptr;
 
     std::vector<sorter> _sorters;
     std::map<int, std::list<std::string>> _tmpfiles;

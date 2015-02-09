@@ -52,26 +52,36 @@ engine::engine (const std::string& plugin,
 }
 
 engine::~engine()
-{}
+{
+    for (auto& consumer: _consumers) consumer.join_thread();
+}
 
 input_buffer*
 engine::prepare_input()
 {
-    if (_next_buffer)
+    try
     {
-	throw std::runtime_error (std::string("engine::") + __FUNCTION__
-				  + " shall only be called once");
-    }
-    _next_buffer = _buffer_trader.producer_get();
+	if (_next_buffer)
+	{
+	    throw std::runtime_error (std::string("engine::") + __FUNCTION__
+				      + " shall only be called once");
+	}
+	_next_buffer = _buffer_trader.producer_get();
 
-    for (uint16_t i = 0; i < _parallel; i++)
+	for (uint16_t i = 0; i < _parallel; i++)
+	{
+	    _consumers.emplace_back (_plugin_loader.get(), _tmpdir, _is_subdir,
+				     _parallel, i, _bytes_buffer, false);
+	    _consumers.back().start_thread (_buffer_trader);
+	}
+
+	return _buffer_trader.producer_get();
+    }
+    catch (...)
     {
-	_consumers.emplace_back (_plugin_loader.get(), _tmpdir, _is_subdir,
-				 _parallel, i, _bytes_buffer, false);
-	_consumers.back().start_thread (_buffer_trader);
+	_buffer_trader.finish (false);
+	throw;
     }
-
-    return _buffer_trader.producer_get();
 }
 
 static void
@@ -99,32 +109,57 @@ transfer_end (input_buffer* current, input_buffer* next)
 			      + "\"");
 }
 
+static void wait_consumers (std::list<consumer>& consumers)
+{
+    for (auto& consumer: consumers)
+    {
+	consumer.join_thread();
+	if (consumer.exception_ptr())
+	{
+	    std::rethrow_exception (consumer.exception_ptr());
+	}
+    }
+}
+
 input_buffer*
 engine::provide_input_data (input_buffer* data)
 {
-    if (!_next_buffer)
+    try
     {
-	throw std::runtime_error
-	    ("engine::prepare_sorting() must be called before"
-	     " engine::provide_input_data()");
-    }
+	if (!_next_buffer)
+	{
+	    throw std::runtime_error
+		("engine::prepare_sorting() must be called before"
+		 " engine::provide_input_data()");
+	}
 
-    transfer_end (data, _next_buffer);
-    auto* current = _next_buffer;
-    _next_buffer = _buffer_trader.producer_swap (data);
-    return current;
+	transfer_end (data, _next_buffer);
+	auto* current = _next_buffer;
+	_next_buffer = _buffer_trader.producer_swap (data);
+	if (!_next_buffer) wait_consumers (_consumers);
+	return current;
+    }
+    catch (...)
+    {
+	_buffer_trader.finish (false);
+	throw;
+    }
 }
 
 void
 engine::complete_input (input_buffer* data)
 {
-    if (data->start() != data->end())
+    try
     {
-	_buffer_trader.producer_swap (data);
+	if (data->start() != data->end()) _buffer_trader.producer_swap (data);
+	_buffer_trader.finish();
     }
-    _buffer_trader.wait_emptied();
-
-    for (auto& consumer: _consumers) consumer.join_thread();
+    catch (...)
+    {
+	_buffer_trader.finish (false);
+	throw;
+    }
+    wait_consumers (_consumers);
 }
 
 void
@@ -151,6 +186,7 @@ engine::reduce()
 			     _max_files/_parallel));
 	}
     }
+    _consumers.clear();
 
     auto& mapreducer (_plugin_loader.get());
     if (settings::instance().sort_output()) merge_sorted (mapreducer);
@@ -177,12 +213,12 @@ engine::reduce_existing_files()
 	{
 	    const char *period = strchr (file, '.');
 
-	    if (!period || !isdigit(period[1]))
+	    if (!period || period[1] != 'h' || !isdigit(period[2]))
 	    {
 		throw std::runtime_error (std::string("Invalid tmpfile name ")
 					  + file);
 	    }
-	    lists[atoi(period+1)%_parallel].push_back (_tmpdir + "/" + file);
+	    lists[atoi(period+2)%_parallel].push_back (_tmpdir + "/" + file);
 	}
 
 	for (auto& tmpfiles: lists)

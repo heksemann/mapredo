@@ -83,7 +83,7 @@ TEST(buffer_trader, consumer_swap)
 	ASSERT_EQ (0, next->end());
     }
 
-    bt.wait_emptied();
+    bt.finish();
 
     size_t total = 0;
 
@@ -103,10 +103,28 @@ TEST(buffer_trader, small_data)
     bt.producer_get();
 
     auto res1 = std::async(std::launch::async, [](buffer_trader* bt)
-			  {while (bt->consumer_get());}, &bt);
+			   {while (bt->consumer_get());}, &bt);
     auto res2 = std::async(std::launch::async, [](buffer_trader* bt)
 			   {while (bt->consumer_get());}, &bt);
 
     bt.producer_swap (current);
-    bt.wait_emptied();
+    bt.finish();
+    res1.get();
+    res2.get();
+}
+
+
+TEST(buffer_trader, consumer_failure)
+{
+    buffer_trader bt (0x10000, 3, 1);
+
+    input_buffer* current = bt.producer_get();
+    bt.producer_get();
+
+    auto res = std::async
+	(std::launch::async, [](buffer_trader* bt) {bt->finish (false);}, &bt);
+
+    current = bt.producer_swap(current);
+    EXPECT_EQ (nullptr, bt.producer_swap(current));
+    res.get();
 }

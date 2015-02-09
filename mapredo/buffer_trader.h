@@ -12,8 +12,8 @@
 
 /**
  * Used to keep track of input buffers in memory.  This class is
- * thread safe, but needs to be be used with caution.  Specifically,
- * it should be destroyed before the consumer threads.
+ * thread safe, but needs to be be used with caution to avoid hanging
+ * consumer threads.
  */
 class buffer_trader
 {
@@ -41,7 +41,7 @@ public:
      * called from the input thread and may hang until there is an
      * available buffer.
      * @param buffer filled buffer
-     * @returns empty buffer
+     * @returns empty buffer or nullptr if a consumer has indicated failure
      */
      input_buffer* producer_swap (input_buffer* buffer);
 
@@ -62,10 +62,14 @@ public:
     input_buffer* consumer_swap (input_buffer* buffer);
 
     /**
-     * Indicate that there will be no more incoming data, called by
-     * producer to hang until all consumer threads have finished.
+     * Called by producer to indicate that there will be no more
+     * incoming data (successfully or not), or by a consumer to
+     * indicate failure.  Make sure the producer calls this before
+     * joining consumer threads, and always join any consumer threads
+     * before destroying this object!
+     * @param success if true, any buffered data shall be ignored if false
      */
-    void wait_emptied();
+    void finish (const bool success = true);
     
 private:
     void consumer_finish();
@@ -74,7 +78,8 @@ private:
     const size_t _max_buffers;
     const size_t _num_consumers;
     std::mutex _mutex;
-    int _waiting_final = 0;
+    bool _finished = false;
+    bool _success;
 
     std::list<input_buffer> _all_buffers;
     std::condition_variable _producer_cond;

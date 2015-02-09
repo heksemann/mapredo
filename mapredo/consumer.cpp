@@ -29,7 +29,7 @@ consumer::consumer (mapredo::base& mapreducer,
 
 consumer::~consumer()
 {
-    if (_thread.joinable()) _thread.join();
+    join_thread();
 }
 
 void
@@ -41,7 +41,7 @@ consumer::start_thread (buffer_trader& trader)
 void
 consumer::join_thread()
 {
-    _thread.join();
+    if (_thread.joinable()) _thread.join();
 }
 
 void
@@ -55,44 +55,52 @@ consumer::append_tmpfiles (const size_t index, std::list<std::string>& files)
 void
 consumer::work (buffer_trader& trader)
 {
-    auto* buffer = trader.consumer_get();
-
-    if (!buffer) return;
-    std::stringstream stream;
-
-    size_t pos;
-
-    do
+    try
     {
-	char* buf = buffer->get();
-	size_t start = buffer->start();
-	const size_t end = buffer->end();
+	auto* buffer = trader.consumer_get();
 
-	while (start < end)
+	if (!buffer) return;
+	std::stringstream stream;
+
+	size_t pos;
+
+	do
 	{
-	    for (pos = start; pos < end && buf[pos] != '\n'; pos++) ;
+	    char* buf = buffer->get();
+	    size_t start = buffer->start();
+	    const size_t end = buffer->end();
 
-	    if (pos == start || buf[pos-1] != '\r')
+	    while (start < end)
 	    {
-		buf[pos] = '\0';
-		_mapreducer.map (buf + start, pos - start, *this);
+		for (pos = start; pos < end && buf[pos] != '\n'; pos++) ;
+
+		if (pos == start || buf[pos-1] != '\r')
+		{
+		    buf[pos] = '\0';
+		    _mapreducer.map (buf + start, pos - start, *this);
+		}
+		else
+		{
+		    buf[pos-1] = '\0';
+		    _mapreducer.map (buf + start, pos - start - 1, *this);
+		}
+		start = pos + 1;
 	    }
-	    else
-	    {
-		buf[pos-1] = '\0';
-		_mapreducer.map (buf + start, pos - start - 1, *this);
-	    }
-	    start = pos + 1;
 	}
-    }
-    while ((buffer = trader.consumer_swap(buffer)));
+	while ((buffer = trader.consumer_swap(buffer)));
 
-    for (auto& sorter: _sorters)
-    {
-	sorter.flush();
-	_tmpfiles[sorter.hash_index()] = sorter.grab_tmpfiles();
+	for (auto& sorter: _sorters)
+	{
+	    sorter.flush();
+	    _tmpfiles[sorter.hash_index()] = sorter.grab_tmpfiles();
+	}
+	_sorters.clear();
     }
-    _sorters.clear();
+    catch (...)
+    {
+	_texception = std::current_exception();
+	trader.finish (false);
+    }
 }
 
 static unsigned int hash (const char* str, size_t siz)
