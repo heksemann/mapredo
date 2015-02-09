@@ -20,3 +20,5 @@ set_target_properties(lmapredo
 target_link_libraries (lmapredo pthread snappy)
 
 install (TARGETS lmapredo DESTINATION ${CMAKE_INSTALL_LIBDIR})
+file (GLOB include_files "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
+install (FILES ${include_files} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/mapredo)

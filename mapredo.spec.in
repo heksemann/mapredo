@@ -30,14 +30,13 @@ lib%{name} is a library used by map-reducers.
 %setup -q
 
 %build
-%configure
+%cmake .
 make %{?_smp_mflags}
-make check
+make test
 
 %install
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
-rm $RPM_BUILD_ROOT%{_libdir}/*.la
 
 %clean
 rm -rf $RPM_BUILD_ROOT
