@@ -118,8 +118,10 @@ file_merger::do_merge (const merge_mode mode)
     }
     if (settings::instance().verbose())
     {
-	std::cerr << "Processing " << queue.size() << " tmpfiles, "
-		  << _tmpfiles.size() << " left\n";
+	std::ostringstream stream;
+	stream << "Processing " << queue.size() << " tmpfiles, "
+	       << _tmpfiles.size() << " left\n";
+	std::cerr << stream.str();
     }
 
     if (queue.empty())

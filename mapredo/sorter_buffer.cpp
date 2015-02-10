@@ -68,10 +68,7 @@ sorter_buffer::tune (const double ratio)
 
 	_buffer = new char[_buffer_size];
         
-	if (settings::instance().verbose())
-	{
-	    std::cerr << "Resized buffer/lookup ratio to " << _ratio << ".\n";
-	}
+	// std::cerr << "Resized buffer/lookup ratio to " << _ratio << ".\n";
     }
     _tuned = true;
 }
