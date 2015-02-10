@@ -21,13 +21,14 @@ class sorter
 public:
     /**
      * @param tmpdir where to save temporary files
-     * @param index unique number used in filenames
+     * @param index number used in filenames
      * @param max_bytes_buffer number of bytes in each buffer to sort
      * @param type type of key to sort on
      * @param reverse sort in descending order if true
      */
     sorter (const std::string& tmpdir,
-	    const size_t index,
+	    const uint16_t hash_index,
+	    const uint16_t worker_index,
 	    const size_t max_bytes_buffer,
 	    const mapredo::base::keytype type,
 	    const bool reverse);
@@ -45,21 +46,23 @@ public:
      */
     std::list<std::string> grab_tmpfiles();
 
+    /**
+     * Sort and flush current buffer to disk
+     */
     void flush();
-    void wait_flushed();
+
+    /** @returns hash index number as given to the constructor */
+    uint16_t hash_index() const {return _index;}
 
     sorter (sorter&& other);
 
     sorter (const sorter&) = delete;
 
 private:
-    std::string flush_buffer_safe (sorter_buffer* const buffer);
-    std::string flush_buffer (sorter_buffer* const buffer);
-
-    std::list<sorter_buffer> _buffers;
-    sorter_buffer* _current = 0;
+    sorter_buffer _buffer;
     const std::string _tmpdir;
     const size_t _bytes_per_buffer;
+    uint16_t _index;
     std::string _file_prefix;
     int _tmpfile_id = 0;
     std::list<std::string> _tmpfiles;
@@ -67,7 +70,6 @@ private:
     bool _merging_off = false;
     bool _flushing_in_progress = false;
     std::future<std::string> _flush_result;
-    std::exception_ptr _texception;
     const mapredo::base::keytype _type;
     const bool _reverse;
 };

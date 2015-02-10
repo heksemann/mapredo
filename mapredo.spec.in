@@ -1,13 +1,13 @@
 %define RELEASE 1
 
 Name: @CMAKE_PROJECT_NAME@
-Version: @PACKAGE_VERSION@
+Version: @PROJECT_VERSION@
 License: LGPL
 Vendor: Hextreme.com
 Group: Development/Libraries
 Summary: Map-reduce engine for small/medium data
 Release: %RELEASE
-Source: %{name}-%{version}.tar.gz
+Source: %{name}-%{version}.tar.bz2
 URL: http://hextreme.com/mapredo
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 Packager: Kjell Irgens <mapredo@hextreme.com>
@@ -30,14 +30,13 @@ lib%{name} is a library used by map-reducers.
 %setup -q
 
 %build
-%configure
+%cmake .
 make %{?_smp_mflags}
-make check
+make test
 
 %install
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
-rm $RPM_BUILD_ROOT%{_libdir}/*.la
 
 %clean
 rm -rf $RPM_BUILD_ROOT

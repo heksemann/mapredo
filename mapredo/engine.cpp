@@ -22,16 +22,19 @@
 #include "settings.h"
 #include "compression.h"
 
-engine::engine (const std::string& tmpdir,
+engine::engine (const std::string& plugin,
+		const std::string& tmpdir,
 		const std::string& subdir,
-		const size_t parallel,
+		const uint16_t parallel,
 		const size_t bytes_buffer,
-		const int max_open_files)
-    : _tmpdir (subdir.empty() ? tmpdir : (tmpdir + "/" + subdir)),
-      _is_subdir (subdir.size()),
-      _parallel (parallel),
-      _bytes_buffer (bytes_buffer),
-      _max_files (max_open_files)
+		const int max_open_files) :
+    _plugin_loader (plugin),
+    _tmpdir (subdir.empty() ? tmpdir : (tmpdir + "/" + subdir)),
+    _is_subdir (subdir.size()),
+    _parallel (parallel),
+    _bytes_buffer (bytes_buffer),
+    _max_files (max_open_files),
+    _buffer_trader (0x100000, parallel + 2, parallel)
 {
 #ifndef _WIN32
     if (access(tmpdir.c_str(), R_OK|W_OK|X_OK) != 0)
@@ -41,49 +44,135 @@ engine::engine (const std::string& tmpdir,
     {
 	throw std::runtime_error (tmpdir + " needs to be a writable directory");
     }
-}
 
-engine::~engine()
-{}
-
-void
-engine::enable_sorters (const mapredo::base::keytype type, const bool reverse)
-{
     if (_is_subdir)
     {
 	if (!directory::exists(_tmpdir)) directory::create (_tmpdir);
-    }    
+    }
+}
 
+engine::~engine()
+{
+    for (auto& consumer: _consumers) consumer.join_thread();
+}
+
+input_buffer*
+engine::prepare_input()
+{
+    try
+    {
+	if (_next_buffer)
+	{
+	    throw std::runtime_error (std::string("engine::") + __FUNCTION__
+				      + " shall only be called once");
+	}
+	_next_buffer = _buffer_trader.producer_get();
+
+	for (uint16_t i = 0; i < _parallel; i++)
+	{
+	    _consumers.emplace_back (_plugin_loader.get(), _tmpdir, _is_subdir,
+				     _parallel, i, _bytes_buffer, false);
+	    _consumers.back().start_thread (_buffer_trader);
+	}
+
+	return _buffer_trader.producer_get();
+    }
+    catch (...)
+    {
+	_buffer_trader.finish (false);
+	throw;
+    }
+}
+
+static void
+transfer_end (input_buffer* current, input_buffer* next)
+{
+    const size_t start (current->start());
+    char* buf (current->get());
+
+    for (size_t i = current->end(); i > start; i--)
+    {
+	if (buf[i-1] == '\n')
+	{
+	    next->end() = current->end() - i;
+	    if (next->end() > 0)
+	    {
+		memcpy (next->get(), buf + i, next->end());
+		current->end() = i;
+	    }
+	    return;
+	}
+    }
+
+    throw std::runtime_error ("No newlines found in input buffer: \""
+			      + std::string(buf, current->end() - start)
+			      + "\"");
+}
+
+static void wait_consumers (std::list<consumer>& consumers)
+{
+    for (auto& consumer: consumers)
+    {
+	consumer.join_thread();
+	if (consumer.exception_ptr())
+	{
+	    std::rethrow_exception (consumer.exception_ptr());
+	}
+    }
+}
+
+input_buffer*
+engine::provide_input_data (input_buffer* data)
+{
+    try
+    {
+	if (!_next_buffer)
+	{
+	    throw std::runtime_error
+		("engine::prepare_sorting() must be called before"
+		 " engine::provide_input_data()");
+	}
+
+	transfer_end (data, _next_buffer);
+	auto* current = _next_buffer;
+	_next_buffer = _buffer_trader.producer_swap (data);
+	if (!_next_buffer) wait_consumers (_consumers);
+	return current;
+    }
+    catch (...)
+    {
+	_buffer_trader.finish (false);
+	throw;
+    }
+}
+
+void
+engine::complete_input (input_buffer* data)
+{
+    try
+    {
+	if (data->start() != data->end()) _buffer_trader.producer_swap (data);
+	_buffer_trader.finish();
+    }
+    catch (...)
+    {
+	_buffer_trader.finish (false);
+	throw;
+    }
+    wait_consumers (_consumers);
+}
+
+void
+engine::reduce()
+{
     for (size_t i = 0; i < _parallel; i++)
     {
-	_sorters.emplace_back (_tmpdir, i, _bytes_buffer/_parallel, type,
-			       reverse);
-    }
-    _unprepared = false;
-}
+	std::list<std::string> tmpfiles;
 
-void
-engine::flush()
-{
-    for (auto& sorter: _sorters) sorter.flush();
-
-    for (auto& sorter: _sorters)
-    {
-	sorter.wait_flushed();
-	sorter.grab_tmpfiles();
-    }
-}
-
-void
-engine::flush (mapredo::base& mapreducer, plugin_loader& loader)
-{
-    for (auto& sorter: _sorters) sorter.flush();
-
-    for (auto& sorter: _sorters)
-    {
-	sorter.wait_flushed();
-	std::list<std::string> tmpfiles (sorter.grab_tmpfiles());
-
+	for (auto& consumer: _consumers)
+	{
+	    consumer.append_tmpfiles (i, tmpfiles);
+	}
 	if (tmpfiles.size() == 1 && settings::instance().sort_output())
 	{
 	    _files_final_merge.push_back (tmpfiles.front());
@@ -91,20 +180,21 @@ engine::flush (mapredo::base& mapreducer, plugin_loader& loader)
 	else if (tmpfiles.size())
 	{
 	    _mergers.push_back
-		(file_merger(loader.get(),
-			     static_cast<std::list<std::string>&&>(tmpfiles),
+		(file_merger(_plugin_loader.get(),
+			     std::move(tmpfiles),
 			     _tmpdir, _unique_id++, 0x20000,
 			     _max_files/_parallel));
 	}
     }
-    _sorters.clear();
+    _consumers.clear();
 
+    auto& mapreducer (_plugin_loader.get());
     if (settings::instance().sort_output()) merge_sorted (mapreducer);
     else merge_grouped (mapreducer);
 }
 
 void
-engine::reduce (mapredo::base& mapreducer, plugin_loader& loader)
+engine::reduce_existing_files()
 {
     if (!_is_subdir)
     {
@@ -123,12 +213,12 @@ engine::reduce (mapredo::base& mapreducer, plugin_loader& loader)
 	{
 	    const char *period = strchr (file, '.');
 
-	    if (!period || !isdigit(period[1]))
+	    if (!period || period[1] != 'h' || !isdigit(period[2]))
 	    {
 		throw std::runtime_error (std::string("Invalid tmpfile name ")
 					  + file);
 	    }
-	    lists[atoi(period+1)%_parallel].push_back (_tmpdir + "/" + file);
+	    lists[atoi(period+2)%_parallel].push_back (_tmpdir + "/" + file);
 	}
 
 	for (auto& tmpfiles: lists)
@@ -141,11 +231,13 @@ engine::reduce (mapredo::base& mapreducer, plugin_loader& loader)
 	    {
 		_mergers.push_back
 		    (file_merger
-		     (loader.get(),
+		     (_plugin_loader.get(),
 		      static_cast<std::list<std::string>&&>(tmpfiles),
 		      _tmpdir, _unique_id++, 0x20000, _max_files/_parallel));
 	    }
 	}
+
+	auto& mapreducer (_plugin_loader.get());
 
 	if (settings::instance().sort_output()) merge_sorted (mapreducer);
 	else merge_grouped (mapreducer);
@@ -262,36 +354,6 @@ engine::merge_sorted (mapredo::base& mapreducer)
     _files_final_merge.clear();
 }
 
-static unsigned int hash(const char* str, size_t siz)
-{
-    unsigned int result = 0x55555555;
-    size_t i;
-
-    for (i = 0; i < siz && str[i] != '\t'; i++)
-    {
-	result ^= str[i];
-	result = ((result << 5) | (result >> 27));
-    }
-    return result;
-}
-
-
-void
-engine::collect (const char* inbuffer, const size_t insize)
-{
-    if (_unprepared)
-    {
-	throw std::runtime_error ("engine::enable_sorters() needs to be called"
-				  " before any mapping is done");
-    }
-
-    if (_parallel > 1)
-    {
-	_sorters[hash(inbuffer, insize) % _parallel].add (inbuffer, insize);
-    }
-    else _sorters[0].add (inbuffer, insize);
-}
-
 void
 engine::output_final_files()
 {
@@ -341,13 +403,6 @@ engine::output_final_files()
 		    fwrite (buf.get(), outsize, 1, stdout);
 		    start += insize;
 		    insize = end - start;
-#if 0
-		    std::cerr << "Insize " << insize
-			      << " start " << start
-			      << " end " << end
-			      << " Outsize " << outsize
-			      << "\n";
-#endif
 		    outsize = bufsize;
 		}
 

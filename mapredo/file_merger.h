@@ -85,7 +85,7 @@ private:
     std::unique_ptr<char[]> _coutbuffer;
     size_t _cinbufpos;
     size_t _coutbufpos;
-    std::exception_ptr _texception;
+    std::exception_ptr _texception = nullptr;
 };
 
 template <typename T> void
@@ -118,8 +118,10 @@ file_merger::do_merge (const merge_mode mode)
     }
     if (settings::instance().verbose())
     {
-	std::cerr << "Processing " << queue.size() << " tmpfiles, "
-		  << _tmpfiles.size() << " left\n";
+	std::ostringstream stream;
+	stream << "Processing " << queue.size() << " tmpfiles, "
+	       << _tmpfiles.size() << " left\n";
+	std::cerr << stream.str();
     }
 
     if (queue.empty())

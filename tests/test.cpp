@@ -1,4 +1,7 @@
 
+#include <thread>
+#include <future>
+
 #include <gtest/gtest.h>
 
 #include "compression.h"

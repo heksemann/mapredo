@@ -1,5 +1,6 @@
 
 add_executable(unittests
+  buffer_trader.cpp
   test.cpp
   plugin.cpp
   ../mapredo/directory.cpp)

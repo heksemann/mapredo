@@ -17,6 +17,7 @@
 #include <mapredo/settings.h>
 #include <mapredo/engine.h>
 #include <mapredo/base.h>
+#include <mapredo/buffer_trader.h>
 #ifndef _WIN32
 #include <mapredo/plugin_loader.h>
 #include <mapredo/directory.h>
@@ -39,24 +40,23 @@ static void reduce (const std::string& plugin_file,
 		    const std::string& work_dir,
 		    const std::string& subdir,
 		    const bool verbose,
-		    const int parallel,
+		    const uint16_t parallel,
 		    const int max_files)
 {
     if (verbose)
     {
-	std::cerr << "Using working directory " << work_dir << "\n";
-	std::cerr << "Using " << parallel << " threads,"
+	std::cerr << "Using working directory " << work_dir << "\n"
+		  << "Using " << parallel << " threads,"
 		  << " with HW concurrency at "
 		  << std::thread::hardware_concurrency()
 		  << "\n";
     }
 
-    plugin_loader plugin (plugin_file);
-    auto& mapreducer (plugin.get());
-    engine mapred_engine (work_dir, subdir, parallel, 0, max_files);
+    engine mapred_engine (plugin_file, work_dir, subdir, parallel, 0,
+			  max_files);
     auto start_time (std::chrono::high_resolution_clock::now());
 
-    mapred_engine.reduce (mapreducer, plugin);
+    mapred_engine.reduce_existing_files();
 
     if (verbose)
     {
@@ -70,87 +70,49 @@ static void run (const std::string& plugin_file,
 		 const std::string& subdir,
 		 const bool verbose,
 		 const size_t buffer_size,
-		 const int parallel,
+		 const uint16_t parallel,
 		 const int max_files,
 		 const bool map_only)
 {
-    plugin_loader plugin (plugin_file);
-    auto& mapreducer (plugin.get());
-    engine mapred_engine (work_dir, subdir, parallel, buffer_size, max_files);
-    size_t buf_size = 0x2000;
-    std::unique_ptr<char[]> buf (new char[buf_size]);
-    size_t start = 0, end = 0;
-    size_t i;
-    ssize_t bytes;
-    std::string line;
+    engine mapred_engine (plugin_file, work_dir, subdir, parallel, buffer_size,
+			  max_files);
+    size_t bytes;
     bool first = true;
-    std::chrono::high_resolution_clock::time_point start_time;
+    std::chrono::high_resolution_clock::time_point start_time;    
+    input_buffer* buffer = mapred_engine.prepare_input();
 
-#ifdef _WIN32
-    auto STDIN_FILENO = GetStdHandle (STD_INPUT_HANDLE);
-    while ((ReadFile (STDIN_FILENO, buf.get() + end, 
-	    buf_size - end, &bytes, NULL) && bytes > 0))
-#else
-    while ((bytes = read(STDIN_FILENO, buf.get() + end, buf_size - end)) > 0)
-#endif
+    while ((bytes = fread(buffer->get() + buffer->end(), 1,
+			  buffer->capacity() - buffer->end(), stdin)) > 0)
     {
-	end += bytes;
+	buffer->end() += bytes;
 	if (first)
 	{
 	    first = false;
 
 	    // Skip any Windows style UTF-8 header
 	    unsigned char u8header[] = {0xef, 0xbb, 0xbf};
-	    if (end - start >= 3 && memcmp(buf.get() + start, u8header, 3) == 0)
+	    if (buffer->end() - buffer->start() >= 3
+		&& memcmp(buffer->get() + buffer->start(), u8header, 3) == 0)
 	    {
-		start += 3;
+		buffer->start() += 3;
 	    }
 	    start_time = std::chrono::high_resolution_clock::now();
-	    mapred_engine.enable_sorters (mapreducer.type(),
-					  false);
 	    if (verbose)
 	    {
-		std::cerr << "Using working directory " << work_dir << "\n";
-		std::cerr << "Maximum buffer size is " << buffer_size
+		std::cerr << "Using working directory " << work_dir << "\n"
+			  << "Sort buffer size is " << buffer_size
 			  << " bytes.\nUsing " << parallel << " threads,"
 			  << " with HW concurrency at "
 			  << std::thread::hardware_concurrency()
 			  << "\n";
 	    }
 	}
-	for (i = start; i < end; i++)
-	{
-	    if (buf[i] == '\n')
-	    {
-		if (i == start || buf[i-1] != '\r')
-		{
-		    buf[i] = '\0';
-		    mapreducer.map(buf.get() + start, i - start, mapred_engine);
-		}
-		else
-		{
-		    buf[i-1] = '\0';
-		    mapreducer.map (buf.get() + start, i - start - 1,
-				    mapred_engine);
-		}
-		start = i + 1;
-	    }
-	}
-	if (start < i)
-	{
-	    if (start == 0)
-	    {
-		buf_size *= 2; // double line buffer
-		char* nbuf = new char[buf_size];
-		memcpy (nbuf, buf.get(), end);
-		buf.reset (nbuf);
-	    }
-	    memmove (buf.get(), buf.get() + start, end - start);
-	    end -= start;
-	    start = 0;
-	}
-	else start = end = 0;
+
+	buffer = mapred_engine.provide_input_data (buffer);
     }
+
+    mapred_engine.complete_input (buffer);
+
     if (first) return; // no input
 
     if (verbose)
@@ -158,17 +120,16 @@ static void run (const std::string& plugin_file,
 	std::cerr << "Sorting finished in " << std::fixed
 		  << duration (start_time) << "s\n";
     }
-
+    
     if (!map_only)
     {
-	mapred_engine.flush (mapreducer, plugin);
+	mapred_engine.reduce();
 	if (verbose)
 	{
 	    std::cerr << "Merging finished in " << std::fixed
 		      << duration (start_time) << "s\n";
 	}
     }
-    else mapred_engine.flush();
 }
 
 static std::string get_default_workdir()
@@ -179,8 +140,8 @@ static std::string get_default_workdir()
 int
 main (int argc, char* argv[])
 {
-    int64_t buffer_size = 10 * 1024 * 1024;
-    int parallel = std::thread::hardware_concurrency();
+    int64_t buffer_size;
+    uint16_t parallel = std::thread::hardware_concurrency() + 1;
     int max_files = 20 * parallel;
     bool verbose = false;
     bool compression = true;
@@ -207,7 +168,7 @@ main (int argc, char* argv[])
 	     false, work_dir, "string", cmd);
 	TCLAP::ValueArg<std::string> bufferSizeArg
 	    ("b", "buffer-size", "Buffer size to use",
-	     false, "10M", "size", cmd);
+	     false, "2M", "size", cmd);
 	TCLAP::ValueArg<int> maxFilesArg
 	    ("f", "max-open-files", "Maximum number of open files",
 	     false, max_files, "number", cmd);
