@@ -1,19 +1,28 @@
 
+#include <thread>
 #include <iostream>
+#include <sstream>
+
 #include "buffer_trader.h"
 
+static const char* snames[] =
+{
+    "INITIAL", "WORKING", "FILLED", "FINISHED"
+};
+
 buffer_trader::buffer_trader (const size_t buffer_size,
-			      const size_t num_buffers,
 			      const size_t num_consumers) :
     _buffer_size (buffer_size),
-    _max_buffers (num_buffers),
     _num_consumers (num_consumers)
 {
-    if (num_buffers < num_consumers + 1)
+    if (num_consumers > _max_consumers)
     {
-	throw std::runtime_error (std::string("Too few buffers in ")
-				  + __FUNCTION__);
+	throw std::runtime_error
+	    ("Too many consumers in buffer_trader constructor");
     }
+
+    for (size_t i = 0; i < num_consumers; i++) _states[i] = INITIAL;
+    _buffers.resize (num_consumers);
 }
 
 buffer_trader::~buffer_trader()
@@ -22,9 +31,7 @@ buffer_trader::~buffer_trader()
 input_buffer*
 buffer_trader::producer_get()
 {
-    std::lock_guard<std::mutex> lock(_mutex);
-
-    if (_all_buffers.size() < _max_buffers - 1)
+    if (_all_buffers.size() < _num_consumers * 2)
     {
 	_all_buffers.emplace_back (_buffer_size);
 	return &_all_buffers.back();
@@ -37,104 +44,168 @@ buffer_trader::producer_get()
 input_buffer*
 buffer_trader::producer_swap (input_buffer* buffer)
 {
-    std::unique_lock<std::mutex> lock(_mutex);
+    input_buffer* empty = nullptr;
 
-    if (_finished) return nullptr;
-
-    bool was_empty = _filled_buffers.empty();
-
-    _filled_buffers.push (buffer);
-    if (was_empty) _consumer_cond.notify_one();
-    
-    if (_all_buffers.size() < _max_buffers)
+    if (_initiated < _num_consumers * 2)
     {
 	_all_buffers.emplace_back (_buffer_size);
-	return &_all_buffers.back();
-    }
+	empty = &_all_buffers.back();
 
-    while (_empty_buffers.empty() && !_finished)
-    {
-	_producer_cond.wait (lock);
-    }
-
-    if (_finished) return nullptr;
-
-    buffer = _empty_buffers.top();
-    _empty_buffers.pop();
-
-    return buffer;
-}
-
-input_buffer*
-buffer_trader::consumer_get()
-{
-    std::unique_lock<std::mutex> lock(_mutex);
-
-    while (!_finished && _filled_buffers.empty())
-    {
-	_consumer_cond.wait (lock);
-    }
-
-    if (_filled_buffers.size() && (!_finished || _success))
-    {
-	auto* buffer = _filled_buffers.top();
-	_filled_buffers.pop();
-
-	return buffer;
-    }
-
-    return nullptr;
-}
-
-input_buffer*
-buffer_trader::consumer_swap (input_buffer* buffer)
-{
-    std::unique_lock<std::mutex> lock(_mutex);
-
-    if (_finished)
-    {
-	if (_filled_buffers.empty() || !_success) return nullptr;
-	else
+	for (;;)
 	{
-	    buffer = _filled_buffers.top();
-	    _filled_buffers.pop();
+	    state status = _states[_current_task];
 
-	    return buffer;
+	    if (status == INITIAL)
+	    {
+		_buffers[_current_task] = buffer;
+		_states[_current_task] = FILLED;
+		_sems[_current_task].post();
+		_initiated++;
+		_current_task = (_current_task + 1) % _num_consumers;
+		return empty;
+	    }
+	    else if (status == FINISHED) return nullptr;
+	    else if (status != FILLED && status != WORKING)
+	    {
+		std::ostringstream stream;
+		stream << "Invalid state " << snames[status]
+		       << " in buffer_trader::producer_swap()";
+		throw std::runtime_error (stream.str());
+	    }
+	    _current_task = (_current_task + 1) % _num_consumers;
 	}
     }
-    
-    bool was_empty = _empty_buffers.empty();
 
-    buffer->start() = 0;
-    buffer->end() = 0;
-    _empty_buffers.push (buffer);
-    if (was_empty) _producer_cond.notify_one();
-    
-    while (!_finished && _filled_buffers.empty())
+    size_t current = _current_task;
+
+    for(;;)
     {
-	_consumer_cond.wait (lock);
+	state status = _states[current];
+
+	switch (status)
+	{
+	case INITIAL:
+	{
+	    std::ostringstream stream;
+	    stream << "Invalid state " << snames[status]
+		   << " in buffer_trader::consumer_get()";
+	    throw std::runtime_error (stream.str());
+	}
+	case WORKING:
+	{
+	    input_buffer* nbuffer = _buffers[current];
+	    _buffers[current] = buffer;
+	    _states[current] = FILLED;
+	    _sems[current].post();
+	    _current_task = (current + 1) % _num_consumers;
+	    return nbuffer;
+	}
+	case FINISHED:
+	    return nullptr;
+	default:
+	    break;
+	}
+
+	current = current % _num_consumers;
+	if (current == _current_task) std::this_thread::yield();
     }
-    if (_filled_buffers.size()  && (!_finished || _success))
-    {
-	buffer = _filled_buffers.top();
-	_filled_buffers.pop();
+}
 
+input_buffer*
+buffer_trader::consumer_get (const size_t id)
+{
+    _sems[id].wait();
+
+    state status = _states[id];
+
+    switch (status)
+    {
+    case FINISHED:
+	return nullptr;
+    case FILLED:
+    {
+	input_buffer* buffer = _buffers[id];
+	_states[id] = INITIAL;
 	return buffer;
     }
+    default:
+    {
+	std::ostringstream stream;
+	stream << "Invalid state " << snames[status]
+	       << " in buffer_trader::consumer_get()";
+	throw std::runtime_error (stream.str());
+    }
+    }
+}
 
-    return nullptr;
+input_buffer*
+buffer_trader::consumer_swap (input_buffer* buffer, const size_t id)
+{
+    buffer->start() = 0;
+    buffer->end() = 0;
+
+    _sems[id].wait();
+
+    state status = _states[id];
+
+    switch (status)
+    {
+    case FINISHED:
+	return nullptr;
+    case FILLED:
+    {
+	input_buffer* nbuffer = _buffers[id];
+	_buffers[id] = buffer;
+	_states[id] = WORKING;
+	return nbuffer;
+    }
+    default:
+    {
+	std::ostringstream stream;
+	stream << "Invalid state " << snames[status]
+	       << " in buffer_trader::consumer_get()";
+	throw std::runtime_error (stream.str());
+    }
+    }
 }
 
 void
-buffer_trader::finish (const bool success)
+buffer_trader::producer_finish()
 {
-    std::unique_lock<std::mutex> lock(_mutex);
+    bool done;
 
-    if (!_finished)
+    do
     {
-	_finished = true;
-	_success = success;
-	_consumer_cond.notify_all();
-	_producer_cond.notify_all();
+	done = true;
+
+	for (size_t i = 0; i < _num_consumers; i++)
+	{
+	    state status = _states[i];
+
+	    if (status != FILLED)
+	    {
+		if (status != FINISHED)
+		{
+		    _states[i] = FINISHED;
+		    _sems[i].post();
+		}
+	    }
+	    else done = false;
+	}
+	std::this_thread::yield();
     }
+    while (!done);
+}
+
+void
+buffer_trader::consumer_fail (const size_t id)
+{
+    state status;
+
+    while ((status = _states[id]) != FILLED && status != FINISHED)
+    {
+	std::this_thread::yield();
+    }
+
+    if (status != FINISHED) _states[id] = FINISHED;
 }
