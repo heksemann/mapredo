@@ -7,7 +7,7 @@ mapredo
 
 Mapredo is C++11 based software inspired by Google's famous MapReduce paper, with focus on small to medium sized data.  Some of the features are:
 
-- Speedy, does word count of the collected works of Shakespeare in <.30s on a 2010 i5 gen 1 laptop
+- Speedy, does word count of the collected works of Shakespeare in ~200ms on a 2010 i5 gen 1 laptop
 - Easy to use, can be pipelined and used with command line tools
 - Compression support (snappy)
 - Supports modern Linux distros (gcc) and Windows (Visual Studio)
