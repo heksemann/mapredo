@@ -123,6 +123,8 @@ private:
     std::array<bsem, _max_consumers> _sems;
     size_t _current_task = 0;
     size_t _initiated = 0;
+    std::atomic<bool> _producer_scan;
+    bsem _producer_sem;
 };
 
 #endif

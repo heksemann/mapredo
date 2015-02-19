@@ -13,7 +13,8 @@ static const char* snames[] =
 buffer_trader::buffer_trader (const size_t buffer_size,
 			      const size_t num_consumers) :
     _buffer_size (buffer_size),
-    _num_consumers (num_consumers)
+    _num_consumers (num_consumers),
+    _producer_scan (false)
 {
     if (num_consumers > _max_consumers)
     {
@@ -51,7 +52,7 @@ buffer_trader::producer_swap (input_buffer* buffer)
 	_all_buffers.emplace_back (_buffer_size);
 	empty = &_all_buffers.back();
 
-	for (;;)
+	for(;;)
 	{
 	    state status = _states[_current_task];
 
@@ -77,8 +78,9 @@ buffer_trader::producer_swap (input_buffer* buffer)
     }
 
     size_t current = _current_task;
+    _producer_scan = true;
 
-    for(;;)
+    for (;;)
     {
 	state status = _states[current];
 
@@ -93,6 +95,11 @@ buffer_trader::producer_swap (input_buffer* buffer)
 	}
 	case WORKING:
 	{
+	    bool expected = true;
+	    if (!_producer_scan.compare_exchange_strong(expected, false))
+	    {
+		_producer_sem.wait();
+	    }
 	    input_buffer* nbuffer = _buffers[current];
 	    _buffers[current] = buffer;
 	    _states[current] = FILLED;
@@ -103,11 +110,14 @@ buffer_trader::producer_swap (input_buffer* buffer)
 	case FINISHED:
 	    return nullptr;
 	default:
+	    current = (current + 1) % _num_consumers;
+	    if (current == _current_task)
+	    {
+		_producer_sem.wait();
+		_producer_scan = true;
+	    }
 	    break;
 	}
-
-	current = current % _num_consumers;
-	if (current == _current_task) std::this_thread::yield();
     }
 }
 
@@ -124,6 +134,11 @@ buffer_trader::consumer_get (const size_t id)
 	return nullptr;
     case FILLED:
     {
+	bool expected = true;
+	if (_producer_scan.compare_exchange_strong(expected, false))
+	{
+	    _producer_sem.post();
+	}
 	input_buffer* buffer = _buffers[id];
 	_states[id] = INITIAL;
 	return buffer;
@@ -154,6 +169,11 @@ buffer_trader::consumer_swap (input_buffer* buffer, const size_t id)
 	return nullptr;
     case FILLED:
     {
+	bool expected = true;
+	if (_producer_scan.compare_exchange_strong(expected, false))
+	{
+	    _producer_sem.post();
+	}
 	input_buffer* nbuffer = _buffers[id];
 	_buffers[id] = buffer;
 	_states[id] = WORKING;
@@ -208,4 +228,10 @@ buffer_trader::consumer_fail (const size_t id)
     }
 
     if (status != FINISHED) _states[id] = FINISHED;
+
+    bool expected = true;
+    if (_producer_scan.compare_exchange_strong(expected, false))
+    {
+	_producer_sem.post();
+    }
 }
