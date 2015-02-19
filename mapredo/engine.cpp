@@ -34,7 +34,7 @@ engine::engine (const std::string& plugin,
     _parallel (parallel),
     _bytes_buffer (bytes_buffer),
     _max_files (max_open_files),
-    _buffer_trader (0x100000, parallel + 2, parallel)
+    _buffer_trader (0x100000, parallel)
 {
 #ifndef _WIN32
     if (access(tmpdir.c_str(), R_OK|W_OK|X_OK) != 0)
@@ -79,7 +79,7 @@ engine::prepare_input()
     }
     catch (...)
     {
-	_buffer_trader.finish (false);
+	_buffer_trader.producer_finish();
 	throw;
     }
 }
@@ -141,7 +141,7 @@ engine::provide_input_data (input_buffer* data)
     }
     catch (...)
     {
-	_buffer_trader.finish (false);
+	_buffer_trader.producer_finish();
 	throw;
     }
 }
@@ -152,11 +152,11 @@ engine::complete_input (input_buffer* data)
     try
     {
 	if (data->start() != data->end()) _buffer_trader.producer_swap (data);
-	_buffer_trader.finish();
+	_buffer_trader.producer_finish();
     }
     catch (...)
     {
-	_buffer_trader.finish (false);
+	_buffer_trader.producer_finish();
 	throw;
     }
     wait_consumers (_consumers);

@@ -69,8 +69,9 @@ private:
     std::thread _thread;
     mapredo::base& _mapreducer;
     const std::string _tmpdir;
-    bool _is_subdir = false;
-    size_t _buckets;
+    const bool _is_subdir = false;
+    const size_t _buckets;
+    const size_t _worker_id;
     std::exception_ptr _texception = nullptr;
 
     std::vector<sorter> _sorters;

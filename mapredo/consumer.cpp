@@ -18,7 +18,8 @@ consumer::consumer (mapredo::base& mapreducer,
     _mapreducer (mapreducer),
     _tmpdir (tmpdir),
     _is_subdir (is_subdir),
-    _buckets (buckets)
+    _buckets (buckets),
+    _worker_id (worker_id)
 {
     for (size_t i = 0; i < buckets; i++)
     {
@@ -57,7 +58,7 @@ consumer::work (buffer_trader& trader)
 {
     try
     {
-	auto* buffer = trader.consumer_get();
+	auto* buffer = trader.consumer_get (_worker_id);
 
 	if (!buffer) return;
 	std::stringstream stream;
@@ -87,7 +88,7 @@ consumer::work (buffer_trader& trader)
 		start = pos + 1;
 	    }
 	}
-	while ((buffer = trader.consumer_swap(buffer)));
+	while ((buffer = trader.consumer_swap(buffer, _worker_id)));
 
 	for (auto& sorter: _sorters)
 	{
@@ -99,7 +100,7 @@ consumer::work (buffer_trader& trader)
     catch (...)
     {
 	_texception = std::current_exception();
-	trader.finish (false);
+	trader.consumer_fail (_worker_id);
     }
 }
 
