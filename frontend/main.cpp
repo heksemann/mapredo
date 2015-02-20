@@ -141,80 +141,82 @@ int
 main (int argc, char* argv[])
 {
     int64_t buffer_size;
+    const char* buffer_size_str = "2M";
     uint16_t parallel = std::thread::hardware_concurrency() + 1;
     int max_files = 20 * parallel;
-    bool verbose = false;
     bool compression = true;
     std::string subdir;
-    std::string work_dir = get_default_workdir();
-    bool map_only = false;
-    bool reduce_only = false;
     bool sort_output = false;
     bool reverse_sort = false;
-    bool keep_tmpfiles = false;
-    std::string plugin_path;
 
     settings& config (settings::instance());
+
+    char* env = getenv ("MAPREDO_THREADS");
+    if (env) parallel = atoi (env);
+
+    env = getenv ("MAPREDO_MAX_OPEN_FILES");
+    if (env) max_files = atoi (env);
+
+    env = getenv ("MAPREDO_BUFFER_SIZE");
+    if (env) buffer_size_str = env;
+
+    env = getenv ("MAPREDO_COMPRESSION");
+    if (env) compression = (env[0] == '1' || env[0] == 't' || env[0] == 'T');
 
     try
     {
 	TCLAP::CmdLine cmd ("mapredo: Map-reduce engine for small/medium data",
 			    ' ', PACKAGE_VERSION);
-	TCLAP::ValueArg<std::string> subdirArg
+	TCLAP::ValueArg<std::string> subdir_arg
 	    ("s", "subdir", "Subdirectory to use",
 	     false, "", "string", cmd);
-	TCLAP::ValueArg<std::string> workdirArg
+	TCLAP::ValueArg<std::string> work_dir
 	    ("d", "work-dir", "Working directory to use",
-	     false, work_dir, "string", cmd);
-	TCLAP::ValueArg<std::string> bufferSizeArg
+	     false, get_default_workdir(), "string", cmd);
+	TCLAP::ValueArg<std::string> buffer_size_arg
 	    ("b", "buffer-size", "Buffer size to use",
-	     false, "2M", "size", cmd);
-	TCLAP::ValueArg<int> maxFilesArg
+	     false, buffer_size_str, "size", cmd);
+	TCLAP::ValueArg<int> max_files_arg
 	    ("f", "max-open-files", "Maximum number of open files",
 	     false, max_files, "number", cmd);
-	TCLAP::ValueArg<int> threadsArg
+	TCLAP::ValueArg<int> threads_arg
 	    ("j", "threads", "Number of threads to use",
 	     false, parallel, "threads", cmd);
-	TCLAP::SwitchArg verboseArg
+	TCLAP::SwitchArg verbose
 	    ("", "verbose", "Verbose output", cmd, false);
-	TCLAP::SwitchArg noCompressionArg
+	TCLAP::SwitchArg no_compression_arg
 	    ("", "no-compression", "Disable compression", cmd, true);
-	TCLAP::SwitchArg keepFilesArg
+	TCLAP::SwitchArg keep_tmpfiles
 	    ("", "keep-tmpfiles", "Keep the temporary files after completion",
 	     cmd, false);
-	TCLAP::SwitchArg mapOnlyArg
+	TCLAP::SwitchArg map_only
 	    ("", "map-only", "Only perform the mapping stage", cmd, false);
-	TCLAP::SwitchArg reduceOnlyArg
+	TCLAP::SwitchArg reduce_only
 	    ("", "reduce-only", "Only perform the reduce stage", cmd, false);
-	TCLAP::SwitchArg sortArg
+	TCLAP::SwitchArg sort_arg
 	    ("", "sort", "Sort keys in final output", cmd, false);
-	TCLAP::SwitchArg reverseSortArg
+	TCLAP::SwitchArg reverse_sort_arg
 	    ("", "rsort", "Reverse sort keys in final output", cmd, false);
-	TCLAP::UnlabeledValueArg<std::string> pluginArg
+	TCLAP::UnlabeledValueArg<std::string> plugin_path
 	    ("plugin", "Plugin file to use", true, "", "plugin file", cmd);
 
 	cmd.parse (argc, argv);
-	subdir = subdirArg.getValue();
-	work_dir = workdirArg.getValue();
-	buffer_size = config.parse_size (bufferSizeArg.getValue());
-	max_files = maxFilesArg.getValue();
-	parallel = threadsArg.getValue();
-	verbose = verboseArg.getValue();
-	keep_tmpfiles = keepFilesArg.getValue();
-	map_only = mapOnlyArg.getValue();
-	reduce_only = reduceOnlyArg.getValue();
-	sort_output = sortArg.getValue();
-	if (reverseSortArg.getValue())
+	subdir = subdir_arg.getValue();
+	buffer_size = config.parse_size (buffer_size_arg.getValue());
+	max_files = max_files_arg.getValue();
+	parallel = threads_arg.getValue();
+	sort_output = sort_arg.getValue();
+	if (reverse_sort_arg.getValue())
 	{
 	    sort_output = reverse_sort = true;
 	}
-	plugin_path = pluginArg.getValue();
-	compression = noCompressionArg.getValue();
+	compression = no_compression_arg.getValue();
 
-	if (!directory::exists(work_dir))
+	if (!directory::exists(work_dir.getValue()))
 	{
 	    throw TCLAP::ArgException
-		("The working directory '" + work_dir + "' does not exist",
+		("The working directory '" + work_dir.getValue()
+		 + "' does not exist",
 		 "work-dir");
 	}
 	if (max_files < 3)
@@ -223,50 +225,48 @@ main (int argc, char* argv[])
 		("Can not work with less than 3 files", "max-open-files");
 	}
 
-	if (reduce_only && map_only)
+	if (reduce_only.getValue() && map_only.getValue())
 	{
 	    throw TCLAP::ArgException
 		("Options --map-only and --reduce-only are mutually exclusive",
 		 "map_only");
 	}
-	if (map_only && subdir.empty())
+	if (map_only.getValue() && subdir.empty())
 	{
 	    throw TCLAP::ArgException
 		("Option --map-only cannot be used without --subdir",
 		 "map-only");
 	}
-	if (reduce_only && subdir.empty())
+	if (reduce_only.getValue() && subdir.empty())
 	{
 	    throw TCLAP::ArgException
 		("Option --reduce-only cannot be used without --subdir",
 		 "reduce-only");
+	}
+
+        if (verbose.getValue()) config.set_verbose();
+	if (compression) config.set_compressed();
+	if (keep_tmpfiles.getValue()) config.set_keep_tmpfiles();
+	if (sort_output) config.set_sort_output();
+	if (reverse_sort) config.set_reverse_sort();
+
+	if (reduce_only.getValue())
+	{
+	    reduce (plugin_path.getValue(), work_dir.getValue(), subdir,
+		    verbose.getValue(), parallel, max_files);
+	}
+	else
+	{
+	    run (plugin_path.getValue(), work_dir.getValue(), subdir,
+		 verbose.getValue(), buffer_size, parallel, max_files,
+		 map_only.getValue());
 	}
     }
     catch (const TCLAP::ArgException& e)
     {
 	std::cerr << "error: " << e.error() << " for " << e.argId()
 		  << std::endl;
-	return (1);
-    }
-
-    if (verbose) config.set_verbose();
-    if (compression) config.set_compressed();
-    if (keep_tmpfiles) config.set_keep_tmpfiles();
-    if (sort_output) config.set_sort_output();
-    if (reverse_sort) config.set_reverse_sort();
-
-    try
-    {
-	if (reduce_only)
-	{
-	    reduce (plugin_path, work_dir, subdir, verbose, parallel,
-		    max_files);
-	}
-	else
-	{
-	    run (plugin_path, work_dir, subdir, verbose, buffer_size,
-		 parallel, max_files, map_only);
-	}
+	return 1;
     }
     catch (const std::exception& e)
     {
