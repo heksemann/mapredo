@@ -11,45 +11,31 @@ struct lookup
     /** @return the key and value of the entry */
     const char* keyvalue() const {return _keyvalue;}
     /** Set the key and value of the entry */
-    void set_ptr (const char* keyvalue) {
+    void set_ptr (const char* keyvalue,
+		  const uint16_t keylen,
+		  const uint16_t totallen) {
 	_keyvalue = keyvalue;
+	_keylen = keylen;
+	_totallen = totallen;
     }
     /**
      * Operator used when sorting the array
      * @param the array element to compare this with
      */
     bool operator< (const lookup& right) const {
-	for (int i = 0;; i++)
-	{
-	    register int l = _keyvalue[i];
-	    register int r = right._keyvalue[i];
+	uint16_t len = std::min(_keylen, right._keylen);
 
-	    if ((l == '\t' || l == '\n' || l == '\0')
-		&& r != '\t' && r != '\n' && r != '\0')
-	    {
-#if 0
-		std::cout << '"' << std::string(_keyvalue, _length -1)
-			  << "\" < \""
-			  << std::string(right._keyvalue, right._length -1)
-			  << "\" by length\n";
-#endif
-		return true;
-	    }
-	    if (r == '\t' || r == '\n' || r == '\0')
-	    {
-#if 0
-		std::cout << std::string(_keyvalue, _length -1) << " >= "
-			  << std::string(right._keyvalue, right._length -1)
-			  << " by length\n";
-#endif
-		return false;
-	    }
+	for (uint16_t i = 0; i < len; i++)
+	{
+	    int l = _keyvalue[i];
+	    int r = right._keyvalue[i];
+
 	    if (l < r)
 	    {
 #if 0
-		std::cout << '"' << std::string(_keyvalue, _length -1)
+		std::cerr << '"' << std::string(_keyvalue, _keylen)
 			  << "\" < \""
-			  << std::string(right._keyvalue, right._length -1)
+			  << std::string(right._keyvalue, right._keylen)
 			  << "\" by value\n";
 #endif
 		return true;
@@ -57,21 +43,30 @@ struct lookup
 	    if (l > r)
 	    {
 #if 0
-		std::cout << '"' << std::string(_keyvalue, _length -1)
-			  << "\" >= \""
-			  << std::string(right._keyvalue, right._length -1)
+		std::cerr << '"' << std::string(_keyvalue, _keylen)
+			  << "\" > \""
+			  << std::string(right._keyvalue, right._keylen)
 			  << "\" by value (" << i << "), "
-			  << _keyvalue[i] << ">=" << right._keyvalue[i]
 			  << "\n";
 #endif
 		return false;
 	    }
 	}
-	return false;
+#if 0
+	std::cerr << '"' << std::string(_keyvalue, _keylen) << '"'
+		  << (_keylen < right._keylen ? " < " : " >= ") << '"'
+		  << std::string(right._keyvalue, right._keylen)
+		  << "\"\n";
+#endif
+	return _keylen < right._keylen;
     }
+
+    uint32_t size() const {return _totallen;}
     
 private:
     const char* _keyvalue;
+    uint16_t _keylen;
+    uint32_t _totallen;
 };
 
 #endif

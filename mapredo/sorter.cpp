@@ -217,11 +217,7 @@ sorter::flush()
 
 	for (auto iter = _buffer.lookup().begin(); iter != end; iter++)
 	{
-	    const char* t (iter->keyvalue());
-	    int i = 0;
-
-	    while (t[i] != '\0' && t[i++] != '\n') ;
-	    if (inbufpos + i > inbuffer_size)
+	    if (inbufpos + iter->size() > inbuffer_size)
 	    {
 		_compressor->compress (inbuffer.get(), inbufpos,
 				       outbuffer.get(), outbufpos);
@@ -229,8 +225,8 @@ sorter::flush()
 		inbufpos = 0;
 		outbufpos = outbuffer_size;
 	    }
-	    memcpy (inbuffer.get() + inbufpos, t, i);
-	    inbufpos += i;
+	    memcpy (inbuffer.get() + inbufpos, iter->keyvalue(), iter->size());
+	    inbufpos += iter->size();
 	}
 	_compressor->compress (inbuffer.get(), inbufpos,
 				outbuffer.get(), outbufpos);
@@ -240,12 +236,8 @@ sorter::flush()
     {
 	for (auto iter = _buffer.lookup().begin(); iter != end; iter++)
 	{
-	    const char* t (iter->keyvalue());
-	    int i = 0;
-
-	    while (t[i] != '\0' && t[i++] != '\n') ;
-	    tmpfile.write (t, i);
-	}	
+	    tmpfile.write (iter->keyvalue(), iter->size());
+	}
     }
 
     tmpfile.close();

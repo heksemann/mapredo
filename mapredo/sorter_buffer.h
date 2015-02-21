@@ -51,9 +51,13 @@ public:
     void clear() {_buffer_used = _lookup_used = 0;}
 
     void add (const char* keyvalue, const size_t totalsize) {
-	//std::cout << std::string(keyvalue, totalsize);
 	memcpy (&_buffer[_buffer_used], keyvalue, totalsize);
-	_lookup[_lookup_used].set_ptr (&_buffer[_buffer_used]);
+	uint16_t i;
+	for (i = 0;
+	     keyvalue[i] != '\t' && keyvalue[i] != '\n' && i < totalsize;
+	     i++);
+	_lookup[_lookup_used].set_ptr (&_buffer[_buffer_used], i,
+				       totalsize + 1);
 	_buffer_used += totalsize + 1;
 	_buffer[_buffer_used - 1] = '\n';
 	++_lookup_used;
