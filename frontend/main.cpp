@@ -145,6 +145,7 @@ main (int argc, char* argv[])
     uint16_t parallel = std::thread::hardware_concurrency() + 1;
     int max_files = 20 * parallel;
     bool compression = true;
+    bool verbose = false;
     std::string subdir;
     bool sort_output = false;
     bool reverse_sort = false;
@@ -161,7 +162,10 @@ main (int argc, char* argv[])
     if (env) buffer_size_str = env;
 
     env = getenv ("MAPREDO_COMPRESSION");
-    if (env) compression = (env[0] == '1' || env[0] == 't' || env[0] == 'T');
+    if (env) compression = (env[0] != '0' && env[0] != 'f' && env[0] != 'F');
+
+    env = getenv ("MAPREDO_VERBOSE");
+    if (env) verbose = (env[0] != '0' && env[0] != 'f' && env[0] != 'F');
 
     try
     {
@@ -182,8 +186,8 @@ main (int argc, char* argv[])
 	TCLAP::ValueArg<int> threads_arg
 	    ("j", "threads", "Number of threads to use",
 	     false, parallel, "threads", cmd);
-	TCLAP::SwitchArg verbose
-	    ("", "verbose", "Verbose output", cmd, false);
+	TCLAP::SwitchArg verbose_arg
+	    ("", "verbose", "Verbose output", cmd, verbose);
 	TCLAP::SwitchArg no_compression_arg
 	    ("", "no-compression", "Disable compression", cmd, true);
 	TCLAP::SwitchArg keep_tmpfiles
@@ -244,7 +248,7 @@ main (int argc, char* argv[])
 		 "reduce-only");
 	}
 
-        if (verbose.getValue()) config.set_verbose();
+        if (verbose_arg.getValue()) config.set_verbose();
 	if (compression) config.set_compressed();
 	if (keep_tmpfiles.getValue()) config.set_keep_tmpfiles();
 	if (sort_output) config.set_sort_output();
@@ -253,12 +257,12 @@ main (int argc, char* argv[])
 	if (reduce_only.getValue())
 	{
 	    reduce (plugin_path.getValue(), work_dir.getValue(), subdir,
-		    verbose.getValue(), parallel, max_files);
+		    verbose_arg.getValue(), parallel, max_files);
 	}
 	else
 	{
 	    run (plugin_path.getValue(), work_dir.getValue(), subdir,
-		 verbose.getValue(), buffer_size, parallel, max_files,
+		 verbose_arg.getValue(), buffer_size, parallel, max_files,
 		 map_only.getValue());
 	}
     }
