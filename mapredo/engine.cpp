@@ -86,7 +86,8 @@ engine::prepare_input()
 	for (uint16_t i = 0; i < _parallel; i++)
 	{
 	    _consumers.emplace_back (_plugin_loader.get(), _tmpdir, _is_subdir,
-				     _parallel, i, _bytes_buffer, false);
+				     _parallel, i, _bytes_buffer,
+				     settings::instance().reverse_sort());
 	    _consumers.back().start_thread (_buffer_trader);
 	}
 

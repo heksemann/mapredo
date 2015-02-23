@@ -22,7 +22,6 @@
 #include <list>
 
 #include "collector.h"
-#include "sorter.h"
 #include "file_merger.h"
 #include "base.h"
 #include "plugin_loader.h"

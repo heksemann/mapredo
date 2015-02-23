@@ -37,7 +37,10 @@ public:
     bool sort_output() const {return _sort_output;}
     void set_sort_output (const bool on = true) {_sort_output = on;}
     bool reverse_sort() const {return _reverse_sort;}
-    void set_reverse_sort (const bool on = true) {_reverse_sort = on;}
+    void set_reverse_sort (const bool on = true) {
+	if (on) _sort_output = true;
+	_reverse_sort = on;
+    }
 
 private:
     settings() = default;

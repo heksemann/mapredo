@@ -162,8 +162,6 @@ main (int argc, char* argv[])
     bool compression = true;
     bool verbose = false;
     std::string subdir;
-    bool sort_output = false;
-    bool reverse_sort = false;
 
     settings& config (settings::instance());
 
@@ -224,11 +222,6 @@ main (int argc, char* argv[])
 	buffer_size = config.parse_size (buffer_size_arg.getValue());
 	max_files = max_files_arg.getValue();
 	parallel = threads_arg.getValue();
-	sort_output = sort_arg.getValue();
-	if (reverse_sort_arg.getValue())
-	{
-	    sort_output = reverse_sort = true;
-	}
 	compression = no_compression_arg.getValue();
 
 	if (!directory::exists(work_dir.getValue()))
@@ -248,7 +241,13 @@ main (int argc, char* argv[])
 	{
 	    throw TCLAP::ArgException
 		("Options --map-only and --reduce-only are mutually exclusive",
-		 "map_only");
+		 "map-only");
+	}
+	if (sort_arg.getValue() && reverse_sort_arg.getValue())
+	{
+	    throw TCLAP::ArgException
+		("Options --sort and --rsort are mutually exclusive",
+		 "sort");
 	}
 	if (map_only.getValue() && subdir.empty())
 	{
@@ -266,8 +265,8 @@ main (int argc, char* argv[])
         if (verbose_arg.getValue()) config.set_verbose();
 	if (compression) config.set_compressed();
 	if (keep_tmpfiles.getValue()) config.set_keep_tmpfiles();
-	if (sort_output) config.set_sort_output();
-	if (reverse_sort) config.set_reverse_sort();
+	if (sort_arg.getValue()) config.set_sort_output();
+	if (reverse_sort_arg.getValue()) config.set_reverse_sort();
 
 	if (reduce_only.getValue())
 	{

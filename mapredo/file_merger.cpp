@@ -130,17 +130,17 @@ file_merger::merge_max_files (const file_merger::merge_mode mode)
     {
     case mapredo::base::keytype::STRING:
     {
-	do_merge<char*> (mode);
+	do_merge<char*> (mode, settings::instance().reverse_sort());
 	break;
     }
     case mapredo::base::keytype::DOUBLE:
     {
-	do_merge<double> (mode);
+	do_merge<double> (mode, settings::instance().reverse_sort());
 	break;
     }
     case mapredo::base::keytype::INT64:
     {
-	do_merge<int64_t> (mode);
+	do_merge<int64_t> (mode, settings::instance().reverse_sort());
 	break;
     }
     case mapredo::base::keytype::UNKNOWN:

@@ -27,6 +27,7 @@
 #include "valuelist.h"
 #include "mapreducer.h"
 #include "tmpfile_collector.h"
+#include "data_reader_queue.h"
 
 namespace mapredo
 {
@@ -85,7 +86,8 @@ private:
     void merge_max_files (const merge_mode mode);
     void compressed_sort();
     void regular_sort();
-    template<typename T> void do_merge (const merge_mode mode);
+    template<typename T> void do_merge (const merge_mode mode,
+					const bool reverse);
 
     mapredo::base& _reducer;
     size_t _size_buffer;
@@ -103,9 +105,9 @@ private:
 };
 
 template <typename T> void
-file_merger::do_merge (const merge_mode mode)
+file_merger::do_merge (const merge_mode mode, const bool reverse)
 {
-    typename data_reader<T>::queue queue;
+    data_reader_queue<T> queue (reverse);
     size_t files;
 
     if (mode == TO_MAX_FILES)

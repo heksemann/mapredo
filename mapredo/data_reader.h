@@ -20,7 +20,6 @@
 #include <type_traits>
 #include <iostream>
 #include <stdexcept>
-#include <queue>
 
 /** Base class for classes used when reading data in merge sort phase */
 template <class T> class data_reader
@@ -74,32 +73,6 @@ public:
 	else throw std::runtime_error
 		 ("get_key_copy() called without prior next_key() call");
     }
-
-    /**
-     * This is used to compare data_reader objects in priority queues.
-     */
-    template <class U> struct drq_compare
-    {
-	/** The key inside the objects pointed to is compared */
-	template<class V = U,
-		 typename std::enable_if<std::is_fundamental<V>::value>
-		 ::type* = nullptr>
-	bool operator()(data_reader<U>* dr1, data_reader<U>* dr2) {
-	    return *dr1->next_key() > *dr2->next_key();
-	}
-
-	/** The key inside the objects pointed to is compared */
-	template<class V = U,
-		 typename std::enable_if<std::is_same<V,char*>::value,
-					 bool>::type* = nullptr>
-	bool operator()(data_reader<U>* dr1, data_reader<U>* dr2) {
-	    return strcmp (*dr1->next_key(), *dr2->next_key()) > 0;
-	}
-    };
-    /** The priority_queue is used when traversing files during merge */
-    typedef std::priority_queue<data_reader<T>*,
-				std::vector<data_reader<T>*>,
-				drq_compare<T>> queue;
 
     /** Comparison with a key, used when traversing files during merge */
     template<class U = T,

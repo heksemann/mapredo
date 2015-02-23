@@ -20,6 +20,7 @@
 #include <queue>
 
 #include "tmpfile_reader.h"
+#include "data_reader_queue.h"
 
 namespace mapredo
 {
@@ -33,7 +34,7 @@ namespace mapredo
 	class iterator
 	{
 	public:
-	    iterator (typename data_reader<T>::queue& queue, const T key) :
+	    iterator (data_reader_queue<T>& queue, const T key) :
 		_queue(&queue), _index(0), _key(key) {
 		auto* proc = queue.top();
 		_value = proc->get_next_value();
@@ -106,14 +107,13 @@ namespace mapredo
 
 	    char* operator*() {return _value;}
 	private:
-	    typename data_reader<T>::queue* _queue = nullptr;
+	    data_reader_queue<T>* _queue = nullptr;
 	    int _index = -1;
 	    T _key;
 	    char* _value;
 	};
 
-	valuelist (typename data_reader<T>::queue& queue) :
-	    _queue (queue) {}
+	valuelist (data_reader_queue<T>& queue) : _queue (queue) {}
 
 	void set_key (T key) { _key = key;}
 
@@ -124,7 +124,7 @@ namespace mapredo
 
     private:
 
-	typename data_reader<T>::queue& _queue;
+	data_reader_queue<T>& _queue;
 	iterator _end;
 	T _key;
     };

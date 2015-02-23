@@ -105,15 +105,14 @@ sorter::grab_tmpfiles()
 
 static bool sorter_r (const lookup& left, const lookup& right)
 {
-    uint16_t len = std::min(left.keylen(), right.keylen());
+    register uint16_t len = std::min(left.keylen(), right.keylen());
+    register uint16_t i;
+    register const char* const lkeyvalue = left.keyvalue();
+    register const char* const rkeyvalue = right.keyvalue();
 
-    for (uint16_t i = 0; i < len; i++)
-    {
-	int l = left.keyvalue()[i];
-	int r = right.keyvalue()[i];
+    for (i = 0; i < len && lkeyvalue[i] == rkeyvalue[i]; i++) ;
 
-	if (l != r) return l > r;
-    }
+    if (i < len) return lkeyvalue[i] > rkeyvalue[i];
     return left.keylen() > right.keylen();
 }
 
