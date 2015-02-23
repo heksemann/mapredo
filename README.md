@@ -10,15 +10,23 @@ Mapredo is C++11 based software inspired by Google's famous MapReduce paper, wit
 - Speedy, does word count of the collected works of Shakespeare in ~200ms on a 2010 i5 gen 1 laptop
 - Easy to use, can be pipelined and used with command line tools
 - Compression support (snappy)
-- Supports modern Linux distros (gcc) and Windows (Visual Studio)
+- Runs on modern Linux distros (gcc) and Windows (Visual Studio)
 - Does not require any configuration, just install and run
 
 Some of the current limitations are:
 
-- Only a single computer/server can be utilized
+- No scale-out to multiple servers
 - Can not be natively embedded into other processing frameworks, but pipes may be used
+- Windows (MSVC) port not up-to-date
 - Not tested on other UNIX like systems, including OS X
 
+### Installation (linux)
+
+    mkdir build
+    cmake -DCMAKE_INSTALL_PREFIX=/usr ..
+    make
+    sudo make install
+    
 ### Mini-HOWTO
 
     wget http://www.gutenberg.org/cache/epub/100/pg100.txt
