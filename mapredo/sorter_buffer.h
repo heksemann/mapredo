@@ -50,15 +50,19 @@ public:
     /** Remove all data from the buffer and lookup table */
     void clear() {_buffer_used = _lookup_used = 0;}
 
-    void add (const char* keyvalue, const size_t totalsize) {
+    void add (const char* keyvalue, size_t totalsize) {
 	memcpy (&_buffer[_buffer_used], keyvalue, totalsize);
 	uint16_t i;
-	for (i = 0;
-	     keyvalue[i] != '\t' && keyvalue[i] != '\n' && i < totalsize;
-	     i++);
-	_lookup[_lookup_used].set_ptr (&_buffer[_buffer_used], i,
-				       totalsize + 1);
-	_buffer_used += totalsize + 1;
+	for (i = 0; keyvalue[i] != '\t' && i < totalsize; i++)
+	{
+	    if (keyvalue[i] == '\n')
+	    {
+		throw std::runtime_error
+		    ("The mapper must never output newlines");
+	    }
+	}
+	_lookup[_lookup_used].set_ptr (&_buffer[_buffer_used], i, ++totalsize);
+	_buffer_used += totalsize;
 	_buffer[_buffer_used - 1] = '\n';
 	++_lookup_used;
     }

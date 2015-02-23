@@ -8,8 +8,13 @@
  */
 struct lookup
 {
-    /** @return the key and value of the entry */
+    /** @return a pointer to the key and value of the entry */
     const char* keyvalue() const {return _keyvalue;}
+    /** @return the length of the key */
+    uint16_t keylen() const {return _keylen;}
+    /** @return the length of the entire line */
+    uint32_t size() const {return _totallen;}
+
     /** Set the key and value of the entry */
     void set_ptr (const char* keyvalue,
 		  const uint16_t keylen,
@@ -25,43 +30,26 @@ struct lookup
     bool operator< (const lookup& right) const {
 	uint16_t len = std::min(_keylen, right._keylen);
 
+#if 0
+	uint16_t i = 0;
+
+	while (len - i >= sizeof(size_t)
+	       && (*reinterpret_cast<const size_t*>(_keyvalue + i)
+		   == *reinterpret_cast<const size_t*>(right._keyvalue + i)))
+	{
+	    i += sizeof(size_t);
+	}
+#endif
+
 	for (uint16_t i = 0; i < len; i++)
 	{
 	    int l = _keyvalue[i];
 	    int r = right._keyvalue[i];
 
-	    if (l < r)
-	    {
-#if 0
-		std::cerr << '"' << std::string(_keyvalue, _keylen)
-			  << "\" < \""
-			  << std::string(right._keyvalue, right._keylen)
-			  << "\" by value\n";
-#endif
-		return true;
-	    }
-	    if (l > r)
-	    {
-#if 0
-		std::cerr << '"' << std::string(_keyvalue, _keylen)
-			  << "\" > \""
-			  << std::string(right._keyvalue, right._keylen)
-			  << "\" by value (" << i << "), "
-			  << "\n";
-#endif
-		return false;
-	    }
+	    if (l != r) return l < r;
 	}
-#if 0
-	std::cerr << '"' << std::string(_keyvalue, _keylen) << '"'
-		  << (_keylen < right._keylen ? " < " : " >= ") << '"'
-		  << std::string(right._keyvalue, right._keylen)
-		  << "\"\n";
-#endif
 	return _keylen < right._keylen;
     }
-
-    uint32_t size() const {return _totallen;}
     
 private:
     const char* _keyvalue;
