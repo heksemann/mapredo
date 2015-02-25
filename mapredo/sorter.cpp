@@ -53,7 +53,7 @@ sorter::sorter (const std::string& tmpdir,
     }
 }
 
-sorter::sorter (sorter&& other) :
+sorter::sorter (sorter&& other) noexcept :
     _buffer (std::move(other._buffer)),
     _tmpdir (std::move(other._tmpdir)),
     _bytes_per_buffer (other._bytes_per_buffer),

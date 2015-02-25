@@ -35,6 +35,7 @@ public:
      * @param ratio the ratio between the buffer and the lookup table
      */
     sorter_buffer (const size_t bytes_available, const double ratio);
+    sorter_buffer (sorter_buffer&& other) noexcept;
     ~sorter_buffer();
 
     /** @return pointer to buffer */
@@ -93,7 +94,6 @@ public:
     /** Get the used ratio between buffer and lookup vector */
     double ideal_ratio() const;
     
-    sorter_buffer (sorter_buffer&& other);
     sorter_buffer (const sorter_buffer&) = delete;
 
 private:

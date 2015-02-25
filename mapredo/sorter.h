@@ -46,6 +46,7 @@ public:
 	    const size_t max_bytes_buffer,
 	    const mapredo::base::keytype type,
 	    const bool reverse);
+    sorter (sorter&& other) noexcept;
     ~sorter();
 
     /**
@@ -67,8 +68,6 @@ public:
 
     /** @returns hash index number as given to the constructor */
     uint16_t hash_index() const {return _index;}
-
-    sorter (sorter&& other);
 
     sorter (const sorter&) = delete;
 

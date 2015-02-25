@@ -42,7 +42,7 @@ sorter_buffer::sorter_buffer(const size_t bytes_available, const double ratio)
     //memset (_buffer, 0, _buffer_size); // for valgrind testing
 }
 
-sorter_buffer::sorter_buffer (sorter_buffer&& other) :
+sorter_buffer::sorter_buffer (sorter_buffer&& other) noexcept :
     _bytes_available (other._bytes_available),
     _buffer (other._buffer),
     _buffer_size (other._buffer_size),
