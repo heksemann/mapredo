@@ -152,39 +152,9 @@ private:
 	_key = buf;
     }
 
-    template<class U = T,
-	     typename std::enable_if<std::is_fundamental<U>::value>::type*
-	     = nullptr>
-    T prepare_key_copy (const T key) {return _key;}
-
-    template<class U = T,
-	     typename std::enable_if<std::is_same<U,char*>::value,bool>::type*
-	     = nullptr>
-    T prepare_key_copy (const char* const key) {
-	if (_keylen >= _alloclen)
-	{
-	    if (_key_copy)
-	    {
-		delete[] _key_copy;
-		do _alloclen *= 2;
-		while (_keylen >= _alloclen);
-	    }
-	    else
-	    {
-		_alloclen = 128;
-		while (_keylen >=_alloclen) _alloclen *= 2;
-	    }
-	    _key_copy = new char[_alloclen];
-	}
-	memcpy (_key_copy, _key, _keylen + 1);
-	return _key_copy;
-    }
-
     T _key;
     int _keylen = 0;
     int _totallen = 0;
-    char* _key_copy = nullptr;
-    int _alloclen = 0;
 };
 
 template <class T> void

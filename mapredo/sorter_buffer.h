@@ -91,7 +91,7 @@ public:
     void tune (const double ratio);
     /** Get the current ratio between buffer and lookup vector sizes */
     double ratio() const {return _ratio;}
-    /** Get the used ratio between buffer and lookup vector */
+    /** Get the ideal ratio between buffer and lookup vector */
     double ideal_ratio() const;
     
     sorter_buffer (const sorter_buffer&) = delete;
