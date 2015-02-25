@@ -153,10 +153,8 @@ file_merger::do_merge (const merge_mode mode, const bool reverse)
 
 	while (!queue.empty())
 	{
-	    T key (queue.top()->get_key_copy());
-	    list.set_key (key);
 	    static_cast<mapredo::mapreducer<T>&>(_reducer).reduce
-		(key, list, *this);
+		(list.get_key(), list, *this);
 	}
     }
     else if (_reducer.reducer_can_combine()
@@ -167,10 +165,8 @@ file_merger::do_merge (const merge_mode mode, const bool reverse)
 
 	while (!queue.empty())
 	{
-	    T key (queue.top()->get_key_copy());
-	    list.set_key (key);
 	    static_cast<mapredo::mapreducer<T>&>(_reducer).reduce
-		(key, list, collector);
+		(list.get_key(), list, collector);
 	}
 	collector.flush();
 	_tmpfiles.push_back (collector.filename());
@@ -207,11 +203,12 @@ file_merger::do_merge (const merge_mode mode, const bool reverse)
 	}
 	_tmpfiles.push_back (filename.str());
 
-	auto* proc = queue.top();
-	queue.pop();
-	T key (proc->get_key_copy());
 	const T* next_key;
 	size_t length;
+	mapredo::valuelist<T> list (queue);
+	T key (list.get_key());
+	auto* proc = queue.top();
+	queue.pop();
 
 	for(;;)
 	{
@@ -241,9 +238,9 @@ file_merger::do_merge (const merge_mode mode, const bool reverse)
 	    {
 		delete proc;
 		if (queue.empty()) break;
+		key = list.get_key();
 		proc = queue.top();
 		queue.pop();
-		key = proc->get_key_copy();
 		continue;
 	    }
 
@@ -258,13 +255,13 @@ file_merger::do_merge (const merge_mode mode, const bool reverse)
 	    }
 	    else
 	    {
+		key = list.get_key();
 		if (cmp > 0)
 		{
 		    queue.pop();
 		    queue.push (proc);
 		    proc = nproc;
 		}
-		key = proc->get_key_copy();
 	    }
 	}
 

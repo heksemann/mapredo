@@ -40,6 +40,9 @@ public:
 	return (_reverse ? _rqueue.top() : _queue.top());
     }
     void pop() {_reverse ? _rqueue.pop() : _queue.pop();}
+
+    data_reader_queue (const data_reader_queue&) = delete;
+    data_reader_queue& operator=(const data_reader_queue&) = delete;
     
 private:
     template <class U> struct comparison

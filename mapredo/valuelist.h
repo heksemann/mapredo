@@ -113,20 +113,41 @@ namespace mapredo
 	    char* _value;
 	};
 
-	valuelist (data_reader_queue<T>& queue) : _queue (queue) {}
+	valuelist (data_reader_queue<T>& queue) :
+	    _queue (queue) {}
 
-	void set_key (T key) { _key = key;}
-
-	iterator begin() const {
-	    return iterator (_queue, _key);
+	template<class U = T,
+		 typename std::enable_if<std::is_fundamental<U>::value>
+                 ::type* = nullptr>
+	U get_key() {
+	    auto key = _queue.top()->next_key();
+	    if (key)
+	    {
+		_key = *key;
+		return *key;
+	    }
+	    throw std::runtime_error
+		("Attempted to valuelist::get_key() on an empty file");
 	}
+
+	template<class U = T, 
+                 typename std::enable_if<std::is_same<U,char*>::value,
+                                         bool>::type* = nullptr>
+	char* get_key() {
+	    _key_copy =_queue.top()->get_key_copy();
+	    _key = const_cast<char*>(_key_copy.c_str());
+	    return _key;
+	}
+
+	iterator begin() const {return iterator (_queue, _key);}
 	const iterator& end() const {return _end;}
 
     private:
 
 	data_reader_queue<T>& _queue;
 	iterator _end;
-	T _key;
+	T _key = 0;
+	std::string _key_copy;
     };
 }
 
