@@ -18,7 +18,6 @@
 #define _HEXTREME_MAPREDO_FILE_MERGER_H
 
 #include <string>
-#include <map>
 #include <list>
 
 #include "collector.h"
@@ -53,9 +52,11 @@ public:
     void merge();
 
     /**
-     * Merge to a single file and return the file name.
+     * Merge to a single file and return the file name.  This may also
+     * output final data to an alternate sink.
+     * @param alt_output if not nullptr, attempt to write to this first
      */
-    std::string merge_to_file();
+    std::string merge_to_file (prefered_output* alt_output);
 
     /**
      * Merge to at most max_open_files file and return the file names.
@@ -83,10 +84,12 @@ private:
 	TO_OUTPUT
     };
     
-    void merge_max_files (const merge_mode mode);
+    void merge_max_files (const merge_mode mode,
+			  prefered_output* alt_output = nullptr);
     void compressed_sort();
     void regular_sort();
     template<typename T> void do_merge (const merge_mode mode,
+					prefered_output* alt_output,
 					const bool reverse);
 
     mapredo::base& _reducer;
@@ -105,7 +108,8 @@ private:
 };
 
 template <typename T> void
-file_merger::do_merge (const merge_mode mode, const bool reverse)
+file_merger::do_merge (const merge_mode mode, prefered_output* alt_output,
+		       const bool reverse)
 {
     data_reader_queue<T> queue (reverse);
     size_t files;
@@ -160,7 +164,11 @@ file_merger::do_merge (const merge_mode mode, const bool reverse)
     else if (_reducer.reducer_can_combine()
 	     || (_tmpfiles.empty() && mode == TO_SINGLE_FILE))
     {
-	tmpfile_collector collector (_file_prefix, _tmpfile_id);
+	tmpfile_collector collector
+	    (_file_prefix, _tmpfile_id,
+	     (_tmpfiles.empty() && mode == TO_SINGLE_FILE)
+	     ? alt_output
+	     : nullptr);
 	mapredo::valuelist<T> list (queue);
 
 	while (!queue.empty())

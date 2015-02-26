@@ -79,13 +79,13 @@ file_merger::merge()
 }
 
 std::string
-file_merger::merge_to_file()
+file_merger::merge_to_file (prefered_output* alt_output)
 {
     try
     {
 	do
 	{
-	    merge_max_files (TO_SINGLE_FILE);
+	    merge_max_files (TO_SINGLE_FILE, alt_output);
 	}
 	while (_tmpfiles.size() > 1);
 
@@ -124,23 +124,27 @@ file_merger::merge_to_files()
 }
 
 void
-file_merger::merge_max_files (const file_merger::merge_mode mode)
+file_merger::merge_max_files (const file_merger::merge_mode mode,
+			      prefered_output* alt_output)
 {
     switch (_reducer.type())
     {
     case mapredo::base::keytype::STRING:
     {
-	do_merge<char*> (mode, settings::instance().reverse_sort());
+	do_merge<char*> (mode, alt_output,
+			 settings::instance().reverse_sort());
 	break;
     }
     case mapredo::base::keytype::DOUBLE:
     {
-	do_merge<double> (mode, settings::instance().reverse_sort());
+	do_merge<double> (mode, alt_output,
+			  settings::instance().reverse_sort());
 	break;
     }
     case mapredo::base::keytype::INT64:
     {
-	do_merge<int64_t> (mode, settings::instance().reverse_sort());
+	do_merge<int64_t> (mode, alt_output,
+			   settings::instance().reverse_sort());
 	break;
     }
     case mapredo::base::keytype::UNKNOWN:

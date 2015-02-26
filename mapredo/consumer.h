@@ -17,7 +17,7 @@
 #ifndef _HEXTREME_MAPREDO_CONSUMER_H
 #define _HEXTREME_MAPREDO_CONSUMER_H
 
-#include <map>
+#include <unordered_map>
 #include <thread>
 
 #include "collector.h"
@@ -89,7 +89,7 @@ private:
     std::exception_ptr _texception = nullptr;
 
     std::vector<sorter> _sorters;
-    std::map<int, std::list<std::string>> _tmpfiles;
+    std::unordered_map<int, std::list<std::string>> _tmpfiles;
 };
 
 #endif

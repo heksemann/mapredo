@@ -36,6 +36,7 @@
 #endif
 #include "settings.h"
 #include "compression.h"
+#include "prefered_stdout_output.h"
 
 engine::engine (const std::string& plugin,
 		const std::string& tmpdir,
@@ -288,22 +289,17 @@ engine::merge_grouped (mapredo::base& mapreducer)
 	}
     }
 
+    prefered_stdout_output prefered_sink;
     std::vector<std::future<std::string>> results;
-    results.resize (_mergers.size() - 1);
+    results.resize (_mergers.size());
     auto riter = results.begin();
 
-    for (iter = _mergers.begin() + 1; iter != _mergers.end(); iter++, riter++)
+    for (auto& merger: _mergers)
     {
-	auto& merger (*iter);
-
-	*riter = std::async (std::launch::async,
-			     &file_merger::merge_to_file,
-			     &merger);
+	*riter++ = std::async (std::launch::async,
+			       &file_merger::merge_to_file,
+			       &merger, &prefered_sink);
     }
-
-    // one of the threads may start outputting right away
-    _mergers.front().merge();
-    _mergers.pop_front();
 
     for (iter = _mergers.begin(), riter = results.begin();
 	 iter != _mergers.end(); iter++, riter++)

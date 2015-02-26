@@ -18,6 +18,7 @@
 #define _HEXTREME_MAPREDO_TMPFILE_COLLECTOR_H
 
 #include "settings.h"
+#include "prefered_output.h"
 
 /**
  * A collector class that writes to a temporary file
@@ -25,8 +26,11 @@
 class tmpfile_collector : public mapredo::collector
 {
 public:
-    tmpfile_collector (const std::string& file_prefix, int& tmpfile_id)
-	: _compressed (settings::instance().compressed())
+    tmpfile_collector (const std::string& file_prefix,
+		       int& tmpfile_id,
+		       prefered_output* alt_output) :
+	_compressed (settings::instance().compressed()),
+	_prefered_output (alt_output)
     {
 	std::ofstream outfile;
 
@@ -64,13 +68,22 @@ public:
 	{
 	    if (_cinbufpos + length >= 0x10000)
 	    {
-		_coutbufpos = 0x15000;
-		_compressor->compress (_cinbuffer.get(),
-				       _cinbufpos,
-				       _coutbuffer.get(),
-				       _coutbufpos);
-		_outfile.write (_coutbuffer.get(), _coutbufpos);
-		_cinbufpos = 0;
+		if (_prefered_output
+		    && _prefered_output->try_write(_cinbuffer.get(),
+						   _cinbufpos))
+		{
+		    _cinbufpos = 0;
+		}
+		else
+		{
+		    _coutbufpos = 0x15000;
+		    _compressor->compress (_cinbuffer.get(),
+					   _cinbufpos,
+					   _coutbuffer.get(),
+					   _coutbufpos);
+		    _outfile.write (_coutbuffer.get(), _coutbufpos);
+		    _cinbufpos = 0;
+		}
 	    }
 	    memcpy (_cinbuffer.get() + _cinbufpos, line, length);
 	    _cinbufpos += length;
@@ -107,6 +120,7 @@ private:
     std::unique_ptr<char[]> _coutbuffer;
     size_t _cinbufpos;
     size_t _coutbufpos;
+    prefered_output* _prefered_output;
 };
 
 #endif
