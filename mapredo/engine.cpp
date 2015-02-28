@@ -69,6 +69,7 @@ engine::engine (const std::string& plugin,
 
 engine::~engine()
 {
+    _buffer_trader.producer_finish();
     for (auto& consumer: _consumers) consumer.join_thread();
 }
 

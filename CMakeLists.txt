@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 2.8.5)
 
 project (mapredo)
-set(PROJECT_VERSION 0.6.0)
+set(PROJECT_VERSION 0.7.0)
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
@@ -41,6 +41,7 @@ include_directories(${GTEST_INCLUDE_DIR})
 add_custom_target(check COMMAND "tests/unittests")
 
 find_package(Doxygen)
+find_package(Ruby)
 
 add_definitions(-DPLUGINSDIR="${CMAKE_INSTALL_FULL_LIBDIR}/mapredo")
 
@@ -49,3 +50,4 @@ add_subdirectory (mapredo)
 add_subdirectory (plugins)
 add_subdirectory (tests)
 add_subdirectory (doc)
+add_subdirectory (ruby)

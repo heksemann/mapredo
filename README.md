@@ -12,6 +12,7 @@ Mapredo is C++11 based software inspired by Google's famous MapReduce paper, wit
 - Compression support (snappy)
 - Runs on modern Linux distros (gcc) and Windows (Visual Studio)
 - Does not require any configuration, just install and run
+- Ruby wrapper for more complex analyses 
 
 Some of the current limitations are:
 
@@ -32,6 +33,3 @@ Some of the current limitations are:
     wget http://www.gutenberg.org/cache/epub/100/pg100.txt
     cat pg100.txt | mapredo wordcount
     cat pg100.txt | mapredo wordcount | mapredo wordsort
-    
-
-
