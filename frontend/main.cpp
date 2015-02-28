@@ -81,6 +81,7 @@ static void reduce (const std::string& plugin_file,
 }
 
 static void run (const std::string& plugin_file,
+		 const std::string& input_file,
 		 const std::string& work_dir,
 		 const std::string& subdir,
 		 const bool verbose,
@@ -95,9 +96,23 @@ static void run (const std::string& plugin_file,
     bool first = true;
     std::chrono::high_resolution_clock::time_point start_time;    
     input_buffer* buffer = mapred_engine.prepare_input();
+    FILE* fp = stdin;
+
+    if (input_file.size())
+    {
+	fp = fopen (input_file.c_str(), "r");
+	if (!fp)
+	{
+	    char err[80];
+
+	    throw std::runtime_error
+		(std::string("Can not open input file: ")
+                 + strerror_r(errno, err, sizeof(err)));
+	}
+    }
 
     while ((bytes = fread(buffer->get() + buffer->end(), 1,
-			  buffer->capacity() - buffer->end(), stdin)) > 0)
+			  buffer->capacity() - buffer->end(), fp)) > 0)
     {
 	buffer->end() += bytes;
 	if (first)
@@ -214,6 +229,10 @@ main (int argc, char* argv[])
 	    ("", "sort", "Sort keys in final output", cmd, false);
 	TCLAP::SwitchArg reverse_sort_arg
 	    ("", "rsort", "Reverse sort keys in final output", cmd, false);
+	TCLAP::ValueArg<std::string> inputfile
+	    ("i", "input",
+	     "Input file to use, defaults to reading standard input",
+	     false, "", "string", cmd);
 	TCLAP::UnlabeledValueArg<std::string> plugin_path
 	    ("plugin", "Plugin file to use", true, "", "plugin file", cmd);
 
@@ -275,9 +294,9 @@ main (int argc, char* argv[])
 	}
 	else
 	{
-	    run (plugin_path.getValue(), work_dir.getValue(), subdir,
-		 verbose_arg.getValue(), buffer_size, parallel, max_files,
-		 map_only.getValue());
+	    run (plugin_path.getValue(), inputfile.getValue(),
+		 work_dir.getValue(), subdir, verbose_arg.getValue(),
+		 buffer_size, parallel, max_files, map_only.getValue());
 	}
     }
     catch (const TCLAP::ArgException& e)
