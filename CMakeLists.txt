@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 2.8.5)
 
 project (mapredo)
-set(PROJECT_VERSION 0.7.0)
+set(PROJECT_VERSION 0.7.1)
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
