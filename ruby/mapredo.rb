@@ -86,7 +86,9 @@ module Mapredo
     end
 
     def add_cmd(reduce_only = false)
-      cmd = "mapredo "
+      cmd = ""
+      cmd += "set -o pipefail;" if(@input_file)
+      cmd += "mapredo "
       cmd += "-i '#{@input_file}' " if @input_file
       cmd += "-j #{@parallel} " if @parallel
       cmd += "--no-compression " if @compression == false
@@ -139,8 +141,7 @@ module Mapredo
 
     cmdlines.each do |cmd|
       $stderr.puts cmd
-      system cmd
-      break if $? != 0
+      break if(system(cmd) != true)
     end
   end
 
@@ -148,9 +149,9 @@ module Mapredo
   # Params:
   # +jobs+:: positive number representing the number of threads
   def Mapredo.parallel(jobs)
-    @parallel = jobs.to_int
+    @parallel = jobs
     raise "Parallel must be a positive integer" if @parallel < 1
-    ENV['MAPREDO_PARALLEL'] = jobs
+    ENV['MAPREDO_PARALLEL'] = jobs.to_s
   end
 
   private
@@ -175,9 +176,9 @@ module Mapredo
       cmd = "#{mapreducer.cmdline} | " \
             + "#{build_cmdline(children.first, @@child[children.first], done)}"
     else
-      cmd = "#{mapreducer.cmdline} > tmpfile#{@id}.txt"
+      cmd = "#{mapreducer.cmdline} > tmp#{mapreducer.object_id}.txt"
       children.each do |mr|
-        mr.input_file "tmpfile#{@id}.txt"
+        mr.input_file "tmp#{mapreducer.object_id}.txt"
       end
     end
     done.add mapreducer

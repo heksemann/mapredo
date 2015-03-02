@@ -305,11 +305,12 @@ engine::merge_grouped (mapredo::base& mapreducer)
     for (iter = _mergers.begin(), riter = results.begin();
 	 iter != _mergers.end(); iter++, riter++)
     {
+	std::string res (riter->get());
 	if (iter->exception_ptr())
 	{
 	    std::rethrow_exception(iter->exception_ptr());
 	}
-	_files_final_merge.push_back (riter->get());
+	_files_final_merge.push_back (res);
     }
     _mergers.clear();
 
@@ -390,9 +391,8 @@ engine::output_final_files()
 	{
 	    char err[80];
 
-	    throw std::runtime_error
-		(std::string("Can not open tmpfile: ")
-		 + strerror_r(errno, err, sizeof(err)));
+	    throw std::runtime_error ("Can not open " + file + ": "
+				      + strerror_r(errno, err, sizeof(err)));
 	}
 	if (!settings::instance().keep_tmpfiles()) unlink (file.c_str());
 
