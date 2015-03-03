@@ -128,13 +128,12 @@ private:
 	FINISHED // no more input
     };
 
-    static const size_t _max_consumers = 100;
     const size_t _buffer_size;
     const size_t _num_consumers;
     std::list<input_buffer> _all_buffers;
-    std::array<std::atomic<state>, _max_consumers> _states;
+    std::unique_ptr<std::atomic<state>[]> _states;
     std::vector<input_buffer*> _buffers;
-    std::array<bsem, _max_consumers> _sems;
+    std::unique_ptr<bsem[]> _sems;
     size_t _current_task = 0;
     size_t _initiated = 0;
     std::atomic<bool> _producer_scan;

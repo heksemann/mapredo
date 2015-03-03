@@ -29,14 +29,10 @@ buffer_trader::buffer_trader (const size_t buffer_size,
 			      const size_t num_consumers) :
     _buffer_size (buffer_size),
     _num_consumers (num_consumers),
+    _states (new std::atomic<state>[num_consumers]),
+    _sems (new bsem[num_consumers]),
     _producer_scan (false)
 {
-    if (num_consumers > _max_consumers)
-    {
-	throw std::runtime_error
-	    ("Too many consumers in buffer_trader constructor");
-    }
-
     for (size_t i = 0; i < num_consumers; i++) _states[i] = INITIAL;
     _buffers.resize (num_consumers);
 }

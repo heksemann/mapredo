@@ -42,7 +42,7 @@ file_merger::file_merger (mapredo::base& reducer,
     std::ostringstream filename;
 
     filename << tmpdir << "/merge_" << std::this_thread::get_id()
-	     << '.' << index << '.';
+	     << ".w" << index << '.';
     _file_prefix = filename.str();
 
     if (max_open_files < 3)

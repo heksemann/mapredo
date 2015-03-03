@@ -60,11 +60,13 @@ static void reduce (const std::string& plugin_file,
 {
     if (verbose)
     {
-	std::cerr << "Using working directory " << work_dir << "\n"
-		  << "Using " << parallel << " threads,"
-		  << " with HW concurrency at "
-		  << std::thread::hardware_concurrency()
-		  << "\n";
+	std::ostringstream stream;
+	
+	stream << plugin_file << ":\n"
+	       << " Using working directory " << work_dir << "\n"
+	       << " Using " << parallel << " threads, with HW concurrency at "
+	       << std::thread::hardware_concurrency() << "\n";
+	std::cerr << stream.str();
     }
 
     engine mapred_engine (plugin_file, work_dir, subdir, parallel, 0,
@@ -129,12 +131,15 @@ static void run (const std::string& plugin_file,
 	    start_time = std::chrono::high_resolution_clock::now();
 	    if (verbose)
 	    {
-		std::cerr << "Using working directory " << work_dir << "\n"
-			  << "Sort buffer size is " << buffer_size
-			  << " bytes.\nUsing " << parallel << " threads,"
-			  << " with HW concurrency at "
-			  << std::thread::hardware_concurrency()
-			  << "\n";
+		std::ostringstream stream;
+
+		stream << plugin_file << ":\n"
+		       << " Using working directory " << work_dir << "\n"
+		       << " Sort buffer size is " << buffer_size << " bytes.\n"
+		       << " Using " << parallel << " threads,  with HW"
+		       << " concurrency at "
+		       << std::thread::hardware_concurrency() << "\n";
+		std::cerr << stream.str();
 	    }
 	}
 
