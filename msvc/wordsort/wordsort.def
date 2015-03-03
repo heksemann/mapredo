@@ -1,4 +1,0 @@
-LIBRARY WORDSORT
-EXPORTS
-   create
-   destroy

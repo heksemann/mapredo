@@ -18,7 +18,7 @@
 #define _HEXTREME_MAPREDO_DIRECTORY_WIN32_H
 
 #ifdef _WIN32
-
+#define NOMINMAX
 #include <string>
 #include <filesystem>
 

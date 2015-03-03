@@ -108,9 +108,20 @@ namespace mapredo
     };
 }
 
+#if defined _WIN32 || defined __CYGWIN__
+ #define SO_EXPORT __declspec(dllexport)
+ #define SO_LOCAL
+#elif __GNUC__ > 4
+ #define SO_EXPORT __attribute__((visibility("default")))
+ #define SO_LOCAL  __attribute__ ((visibility ("hidden")))
+#else
+ #define SO_EXPORT
+ #define SO_LOCAL
+#endif
+
 /// This macro needs to be used exactly once in the map-reducer.
 #define MAPREDO_FACTORIES(t) \
-    extern "C" mapredo::base* create() {return new t;} \
-    extern "C" void destroy(mapredo::base* p) {delete p;}
+    extern "C" SO_EXPORT mapredo::base* create() {return new t;} \
+    extern "C" SO_EXPORT void destroy(mapredo::base* p) {delete p;}
 
 #endif

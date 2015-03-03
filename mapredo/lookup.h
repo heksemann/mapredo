@@ -17,6 +17,10 @@
 #ifndef _HEXTREME_MAPREDO_LOOKUP_H
 #define _HEXTREME_MAPREDO_LOOKUP_H
 
+#include <algorithm>
+
+using std::min;
+
 /**
  * Class used in an array to enable sorting of data.
  */
@@ -25,14 +29,14 @@ struct lookup
     /** @return a pointer to the key and value of the entry */
     const char* keyvalue() const {return _keyvalue;}
     /** @return the length of the key */
-    uint16_t keylen() const {return _keylen;}
+    unsigned short keylen() const {return _keylen;}
     /** @return the length of the entire line */
-    uint32_t size() const {return _totallen;}
+    unsigned int size() const {return _totallen;}
 
     /** Set the key and value of the entry */
     void set_ptr (const char* keyvalue,
-		  const uint16_t keylen,
-		  const uint16_t totallen) {
+		  const unsigned short keylen,
+		  const unsigned short totallen) {
 	_keyvalue = keyvalue;
 	_keylen = keylen;
 	_totallen = totallen;
@@ -42,8 +46,8 @@ struct lookup
      * @param the array element to compare this with
      */
     bool operator< (const lookup& right) const {
-	register uint16_t len = std::min(_keylen, right._keylen);
-	register uint16_t i;
+	register unsigned short len = min(_keylen, right._keylen);
+	register unsigned short i;
 	register const char* const rkeyvalue = right._keyvalue;
 
 	for (i = 0; i < len && _keyvalue[i] == rkeyvalue[i]; i++) ;
@@ -54,8 +58,8 @@ struct lookup
     
 private:
     const char* _keyvalue;
-    uint16_t _keylen;
-    uint32_t _totallen;
+    unsigned short _keylen;
+    unsigned int _totallen;
 };
 
 #endif

@@ -1,4 +1,0 @@
-LIBRARY WORDCOUNT
-EXPORTS
-   create
-   destroy

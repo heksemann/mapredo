@@ -15,6 +15,8 @@ endif()
 #message(${CMAKE_CXX_FLAGS_RELEASE} ${CMAKE_CXX_FLAGS})
 
 include_directories (BEFORE ${PROJECT_SOURCE_DIR})
+include_directories (BEFORE "tclap-1.2.1/include")
+include_directories (BEFORE "snappy-windows-1.1.1.8/include")
 
 set (ARCHIVE_NAME ${CMAKE_PROJECT_NAME}-${PROJECT_VERSION})
 add_custom_target (dist
@@ -35,10 +37,14 @@ configure_file (
   "${mapredo_SOURCE_DIR}/mapredo.spec.in"
   "${mapredo_BINARY_DIR}/mapredo.spec")
 
-enable_testing()
-find_package(GTest REQUIRED)
-include_directories(${GTEST_INCLUDE_DIR})
-add_custom_target(check COMMAND "tests/unittests")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/")
+  
+find_package(GTest)
+if(GTEST_FOUND)
+  enable_testing()
+  include_directories(${GTEST_INCLUDE_DIR})
+  add_custom_target(check COMMAND "tests/unittests")
+endif()
 
 find_package(Doxygen)
 find_package(Ruby)

@@ -23,6 +23,10 @@
 
 #include "lookup.h"
 
+#ifdef _WIN32
+#define noexcept
+#endif
+
 /**
  * Represents a buffer that will be sorted, with a lookup table
  */
@@ -67,7 +71,7 @@ public:
 
     void add (const char* keyvalue, size_t totalsize) {
 	memcpy (&_buffer[_buffer_used], keyvalue, totalsize);
-	uint16_t i;
+	unsigned short i;
 	for (i = 0; keyvalue[i] != '\t' && i < totalsize; i++)
 	{
 	    if (keyvalue[i] == '\n')

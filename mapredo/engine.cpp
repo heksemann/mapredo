@@ -314,7 +314,7 @@ engine::merge_grouped (mapredo::base& mapreducer)
     }
     _mergers.clear();
 
-    output_final_files();
+	output_final_files();
     _files_final_merge.clear();
 }
 
@@ -391,10 +391,20 @@ engine::output_final_files()
 	{
 	    char err[80];
 
-	    throw std::runtime_error ("Can not open " + file + ": "
-				      + strerror_r(errno, err, sizeof(err)));
+#ifdef _WIN32
+		strerror_s (err, sizeof(err), errno);
+#endif
+		throw std::runtime_error("Can not open " + file + ": "
+#ifndef _WIN32
+			+ strerror_r(errno, err, sizeof(err))
+#else
+			+ err
+#endif
+			);
 	}
+#ifndef _WIN32
 	if (!settings::instance().keep_tmpfiles()) unlink (file.c_str());
+#endif
 
 	if (settings::instance().compressed())
 	{
@@ -426,11 +436,6 @@ engine::output_final_files()
 		    memmove (cbuf.get(), cbuf.get() + start, end);
 		    start = 0;
 		}
-#if 0
-		else throw std::runtime_error
-			 ("Can not read compressed data from temporary file"
-			  " in final output phase");
-#endif
 	    }
 	}
 	else
@@ -443,5 +448,8 @@ engine::output_final_files()
 	    }
 	}
 	fclose (fp);
+#ifdef _WIN32
+	if (!settings::instance().keep_tmpfiles()) unlink (file.c_str());
+#endif
     }
 }

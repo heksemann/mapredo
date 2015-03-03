@@ -106,10 +106,17 @@ static void run (const std::string& plugin_file,
 	if (!fp)
 	{
 	    char err[80];
-
-	    throw std::runtime_error
-		(std::string("Can not open input file: ")
-                 + strerror_r(errno, err, sizeof(err)));
+#ifdef _WIN32
+		strerror_s(err, sizeof(err), errno);
+#endif
+		throw std::runtime_error
+			(std::string("Can not open input file: ")
+#ifndef _WIN32
+			+ strerror_r(errno, err, sizeof(err))
+#else
+			= err
+#endif
+			);
 	}
     }
 
@@ -175,7 +182,8 @@ static std::string get_default_workdir()
 int
 main (int argc, char* argv[])
 {
-    int64_t buffer_size;
+	std::cerr << "Starting up\n";
+	int64_t buffer_size;
     const char* buffer_size_str = "2M";
     uint16_t parallel = std::thread::hardware_concurrency() + 1;
     int max_files = 20 * parallel;
@@ -316,5 +324,6 @@ main (int argc, char* argv[])
 	return 1;
     }
 
-    return 0;
+	std::cerr << "All is well\n";
+	return 0;
 }

@@ -1,4 +1,4 @@
-
+if(GTEST_FOUND)
 add_executable(unittests
   buffer_trader.cpp
   data_reader.cpp
@@ -13,3 +13,4 @@ target_link_libraries(unittests
 include_directories(../mapredo)
 
 add_test (all_tests unittests)
+endif()

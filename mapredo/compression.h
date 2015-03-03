@@ -24,7 +24,7 @@
 #include <iostream>
 #include <sstream>
 
-#include <snappy-c.h>
+#include "snappy-c.h"
 
 #include "lookup.h"
 
