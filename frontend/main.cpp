@@ -182,13 +182,13 @@ static std::string get_default_workdir()
 int
 main (int argc, char* argv[])
 {
-	std::cerr << "Starting up\n";
-	int64_t buffer_size;
+    int64_t buffer_size;
     const char* buffer_size_str = "2M";
     uint16_t parallel = std::thread::hardware_concurrency() + 1;
     int max_files = 20 * parallel;
     bool compression = true;
     bool verbose = false;
+    std::string workdir = get_default_workdir();
     std::string subdir;
 
     settings& config (settings::instance());
@@ -208,6 +208,9 @@ main (int argc, char* argv[])
     env = getenv ("MAPREDO_VERBOSE");
     if (env) verbose = (env[0] != '0' && env[0] != 'f' && env[0] != 'F');
 
+    env = getenv ("MAPREDO_WORKDIR");
+    if (env) workdir  = env;
+
     try
     {
 	TCLAP::CmdLine cmd ("mapredo: Map-reduce engine for small/medium data",
@@ -217,7 +220,7 @@ main (int argc, char* argv[])
 	     false, "", "string", cmd);
 	TCLAP::ValueArg<std::string> work_dir
 	    ("d", "work-dir", "Working directory to use",
-	     false, get_default_workdir(), "string", cmd);
+	     false, workdir, "string", cmd);
 	TCLAP::ValueArg<std::string> buffer_size_arg
 	    ("b", "buffer-size", "Buffer size to use",
 	     false, buffer_size_str, "size", cmd);
