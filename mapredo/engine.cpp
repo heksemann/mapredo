@@ -385,7 +385,7 @@ engine::output_final_files()
     for (auto& file: _files_final_merge)
     {
 	size_t bytes;
-	FILE *fp = fopen (file.c_str(), "r");
+	FILE *fp = fopen (file.c_str(), "rb");
 
 	if (!fp)
 	{

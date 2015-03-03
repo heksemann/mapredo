@@ -18,7 +18,6 @@
 #define _HEXTREME_MAPREDO_TMPFILE_READER_H
 
 #include <cstring>
-#include <fstream>
 #include <sstream>
 #include <memory>
 #include <algorithm>
@@ -45,6 +44,7 @@ public:
     //: _file(std::move(other._file)), _pos(other._pos);
     ~tmpfile_reader() {
 	if (_cbuffer) delete[] _cbuffer;
+	if (_fp) fclose(_fp);
 	if (_delete_file_after) remove (_filename.c_str());
     }
 
@@ -57,7 +57,7 @@ public:
 private:
     bool read_more();
 
-    std::ifstream _file;
+    FILE* _fp = 0;
     std::string _filename;
     size_t _buffer_size;
     size_t _cstart_pos = 0;
@@ -90,8 +90,8 @@ tmpfile_reader<T>::tmpfile_reader (const std::string& filename,
 				  " buffer for compressed input");
     }
 
-    _file.open (filename, std::ifstream::binary);
-    if (!_file)
+    _fp = fopen (filename.c_str(), "rb");
+    if (!_fp)
     {
 	char err[80];
 #ifdef _WIN32
@@ -107,9 +107,9 @@ tmpfile_reader<T>::tmpfile_reader (const std::string& filename,
 				    );
     }
     
-    _file.seekg (0, _file.end);
-    _bytes_left_file = _file.tellg();
-    _file.seekg (0, _file.beg);
+    fseek (_fp, 0, SEEK_END);
+    _bytes_left_file = ftell(_fp);
+    fseek (_fp, 0, SEEK_SET);
 
     if (_compressor)
     {
@@ -180,8 +180,7 @@ tmpfile_reader<T>::read_more()
 
 	    size_t bytes_to_read = std::min<size_t> (_bytes_left_file,
 						     _cbuffer_size - _cend_pos);
-	    _file.read (_cbuffer + _cend_pos, bytes_to_read);
-	    if (!_file)
+	    if (!fread(_cbuffer + _cend_pos, bytes_to_read, 1, _fp))
 	    {
 		throw std::runtime_error
 		    ("Can not read compressed data from temporary file");
@@ -211,9 +210,7 @@ tmpfile_reader<T>::read_more()
 
     //std::cerr << "Have " << _end_pos << " bytes, reading " << bytes_to_read
     //<< " more\n";
-    _file.read (this->_buffer + this->_end_pos, bytes_to_read);
-
-    if (!_file)
+    if (!fread (this->_buffer + this->_end_pos, bytes_to_read, 1, _fp))
     {
 	throw std::runtime_error ("Can not read from temporary file");
     }

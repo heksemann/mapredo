@@ -24,7 +24,11 @@
 #include "collector.h"
 #include "file_merger.h"
 #include "base.h"
+#ifndef _WIN32
 #include "plugin_loader.h"
+#else
+#include "plugin_loader_win32.h"
+#endif
 #include "buffer_trader.h"
 #include "consumer.h"
 
