@@ -179,7 +179,7 @@ main (int argc, char* argv[])
     const char* buffer_size_str = "2M";
     uint16_t parallel = std::thread::hardware_concurrency() + 1;
     int max_files = 20 * parallel;
-    bool compression = true;
+    bool no_compression = false;
     bool verbose = false;
     std::string subdir;
 
@@ -195,7 +195,7 @@ main (int argc, char* argv[])
     if (env) buffer_size_str = env;
 
     env = getenv ("MAPREDO_COMPRESSION");
-    if (env) compression = (env[0] != '0' && env[0] != 'f' && env[0] != 'F');
+    if (env) no_compression = (env[0] == '0' || env[0] == 'f' || env[0] == 'F');
 
     env = getenv ("MAPREDO_VERBOSE");
     if (env) verbose = (env[0] != '0' && env[0] != 'f' && env[0] != 'F');
@@ -222,7 +222,7 @@ main (int argc, char* argv[])
 	TCLAP::SwitchArg verbose_arg
 	    ("", "verbose", "Verbose output", cmd, verbose);
 	TCLAP::SwitchArg no_compression_arg
-	    ("", "no-compression", "Disable compression", cmd, true);
+	    ("", "no-compression", "Disable compression", cmd, no_compression);
 	TCLAP::SwitchArg keep_tmpfiles
 	    ("", "keep-tmpfiles", "Keep the temporary files after completion",
 	     cmd, false);
@@ -246,7 +246,6 @@ main (int argc, char* argv[])
 	buffer_size = config.parse_size (buffer_size_arg.getValue());
 	max_files = max_files_arg.getValue();
 	parallel = threads_arg.getValue();
-	compression = no_compression_arg.getValue();
 
 	if (!directory::exists(work_dir.getValue()))
 	{
@@ -287,7 +286,7 @@ main (int argc, char* argv[])
 	}
 
         if (verbose_arg.getValue()) config.set_verbose();
-	if (compression) config.set_compressed();
+	if (!no_compression_arg.getValue()) config.set_compressed();
 	if (keep_tmpfiles.getValue()) config.set_keep_tmpfiles();
 	if (sort_arg.getValue()) config.set_sort_output();
 	if (reverse_sort_arg.getValue()) config.set_reverse_sort();
