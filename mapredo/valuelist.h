@@ -134,7 +134,7 @@ namespace mapredo
                  typename std::enable_if<std::is_same<U,char*>::value,
                                          bool>::type* = nullptr>
 	char* get_key() {
-	    _key_copy =_queue.top()->get_key_copy();
+	    _key_copy = *_queue.top()->next_key();
 	    _key = const_cast<char*>(_key_copy.c_str());
 	    return _key;
 	}

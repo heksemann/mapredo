@@ -83,6 +83,35 @@ private:
 	TO_SINGLE_FILE,
 	TO_OUTPUT
     };
+
+    template <class T> class key_holder {
+    public:
+	template<class U = T,
+		 typename std::enable_if<std::is_fundamental<U>::value>
+                 ::type* = nullptr>
+	U get_key (data_reader<T>& reader) {
+	    auto key = reader.next_key();
+	    if (key) return *key;
+	    throw std::runtime_error
+		("Attempted to key_handler::get_key() on an empty file");
+	}
+
+	template<class U = T,
+                 typename std::enable_if<std::is_same<U,char*>::value,
+                                         bool>::type* = nullptr>
+	char* get_key (data_reader<T>& reader) {
+	    auto key = reader.next_key();
+	    if (key)
+	    {
+		_key_copy = *key;
+		return const_cast<char*>(_key_copy.c_str());
+	    }
+	    throw std::runtime_error
+		("Attempted to key_handler::get_key() on an empty file");
+	}
+    private:
+	std::string _key_copy;
+    };
     
     void merge_max_files (const merge_mode mode,
 			  prefered_output* alt_output = nullptr);
@@ -213,9 +242,9 @@ file_merger::do_merge (const merge_mode mode, prefered_output* alt_output,
 
 	const T* next_key;
 	size_t length;
-	mapredo::valuelist<T> list (queue);
-	T key (list.get_key());
+	key_holder<T> keyh;
 	auto* proc = queue.top();
+	T key (keyh.get_key(*proc));
 	queue.pop();
 
 	for(;;)
@@ -246,16 +275,15 @@ file_merger::do_merge (const merge_mode mode, prefered_output* alt_output,
 	    {
 		delete proc;
 		if (queue.empty()) break;
-		key = list.get_key();
 		proc = queue.top();
+		key = keyh.get_key (*proc);
 		queue.pop();
 		continue;
 	    }
 
 	    auto* nproc = queue.top();
-	    int cmp = nproc->compare (key);
-    
-	    if (cmp == 0)
+
+	    if (*nproc == key)
 	    {
 		queue.pop();
 		queue.push (proc);
@@ -263,13 +291,14 @@ file_merger::do_merge (const merge_mode mode, prefered_output* alt_output,
 	    }
 	    else
 	    {
-		key = list.get_key();
-		if (cmp > 0)
+		int cmp = nproc->compare (*next_key);
+		if (cmp < 0)
 		{
 		    queue.pop();
 		    queue.push (proc);
 		    proc = nproc;
 		}
+		key = keyh.get_key (*proc);
 	    }
 	}
 

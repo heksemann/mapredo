@@ -61,21 +61,6 @@ public:
      */
     const char* get_next_line (size_t& length);
 
-    /**
-     * Get a copy of the next key.  This function is not defined
-     * unless T (and the key) is char*.
-     * @returns std::string copy of the char* key
-     */
-    template<class U = T,
-	     typename std::enable_if<std::is_same<U,char*>::value,bool>::type*
-	     = nullptr>
-    std::string get_key_copy() {
-	auto key = next_key();
-	if (key) return std::string(_key);
-	throw std::runtime_error
-	    ("data_reader::get_key_copy() with no data left");
-    }
-
     /** Comparison with a key, used when traversing files during merge */
     template<class U = T,
 	     typename std::enable_if<std::is_fundamental<U>::value>::type*
