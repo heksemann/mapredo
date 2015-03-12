@@ -22,6 +22,10 @@
 
 #include "data_reader.h"
 
+extern template class data_reader<char*>;
+extern template class data_reader<int64_t>;
+extern template class data_reader<double>;
+
 /** This is a priority queue used when traversing files during merge */
 template <class T> class data_reader_queue
 {

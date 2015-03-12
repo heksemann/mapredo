@@ -25,6 +25,10 @@
 #include "data_reader.h"
 #include "compression.h"
 
+extern template class data_reader<char*>;
+extern template class data_reader<int64_t>;
+extern template class data_reader<double>;
+
 /**
  * Used to read a temporary file while merge sorting
  */

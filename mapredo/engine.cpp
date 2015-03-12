@@ -38,6 +38,10 @@
 #include "compression.h"
 #include "prefered_stdout_output.h"
 
+template class data_reader<char*>;
+template class data_reader<int64_t>;
+template class data_reader<double>;
+
 engine::engine (const std::string& plugin,
 		const std::string& tmpdir,
 		const std::string& subdir,
