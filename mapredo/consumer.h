@@ -20,7 +20,7 @@
 #include <unordered_map>
 #include <thread>
 
-#include "collector.h"
+#include "mcollector.h"
 #include "sorter.h"
 #include "buffer_trader.h"
 
@@ -30,7 +30,7 @@ class mapreducer;
 /**
  * Class used to run map and sort
  */
-class consumer : public mapredo::collector
+class consumer : public mapredo::mcollector
 {
 public:
     /**
@@ -66,6 +66,22 @@ public:
 
     /** Used to collect data, called from the mapper */
     void collect (const char* line, const size_t length);
+
+    /** Reserve memory buffer to store the collected value to. */
+    virtual char* reserve (const char* const key, const size_t bytes) {
+        abort();
+    }
+
+    /**
+     * Collect from the reserved memory buffer returned from reserve().
+     * @param bytes the number of bytes to provide from the buffer.
+     *              If left out, the reserved number of bytes is
+     *              collected.  The value may not be larger than
+     *              the reserved bytes.
+     */
+    virtual void collect_reserved (const size_t length = 0) {
+        abort();
+    }
 
     /**
      * @returns a thread exception if it occured or nullptr otherwise.

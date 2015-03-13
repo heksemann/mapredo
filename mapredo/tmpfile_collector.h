@@ -19,11 +19,12 @@
 
 #include "settings.h"
 #include "prefered_output.h"
+#include "rcollector.h"
 
 /**
  * A collector class that writes to a temporary file
  */
-class tmpfile_collector : public mapredo::collector
+class tmpfile_collector : public mapredo::rcollector
 {
 public:
     tmpfile_collector (const std::string& file_prefix,
@@ -62,7 +63,8 @@ public:
     }
     ~tmpfile_collector() {_outfile.close();}
 
-    void collect (const char* line, const size_t length)
+    /** Collect data from reducer */
+    virtual void collect (const char* line, const size_t length) final
     {
 	if (_compressed)
 	{
@@ -94,6 +96,16 @@ public:
 	    _outfile.write (line, length);
 	    _outfile.write ("\n", 1);
 	}
+    }
+
+    /** Reserve memory buffer for reducer */
+    virtual char* reserve (const size_t bytes) final
+    {
+        abort();
+    }
+
+    virtual void collect_reserved (const size_t length = 0) {
+        abort();
     }
 
     void flush() {

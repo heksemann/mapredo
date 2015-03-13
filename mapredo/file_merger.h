@@ -20,7 +20,7 @@
 #include <string>
 #include <list>
 
-#include "collector.h"
+#include "rcollector.h"
 #include "tmpfile_reader.h"
 #include "settings.h"
 #include "valuelist.h"
@@ -34,7 +34,7 @@ namespace mapredo
 }
 
 /** Does merging of temporary data from the sorting phase */
-class file_merger : public mapredo::collector
+class file_merger : public mapredo::rcollector
 {
 public:
     file_merger (mapredo::base& reducer,
@@ -67,6 +67,16 @@ public:
      * Function called by reducer to report output.
      */
     void collect (const char* line, const size_t length);
+
+    /** Reserve memory buffer for reducer */
+    virtual char* reserve (const size_t bytes) final
+    {
+        abort();
+    }
+
+    virtual void collect_reserved (const size_t length = 0) {
+        abort();
+    }
 
     /**
      * @returns a thread exception if it occured or nullptr otherwise

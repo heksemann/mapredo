@@ -22,7 +22,7 @@
 namespace mapredo
 {
     /**
-     * Collect class for mapreducers
+     * Base collect class for mapreducers
      */
     class collector
     {

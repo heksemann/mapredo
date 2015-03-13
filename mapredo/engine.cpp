@@ -26,7 +26,6 @@
 #include <stdexcept>
 
 #include "engine.h"
-#include "collector.h"
 #ifndef _WIN32
 #include "directory.h"
 #include "plugin_loader.h"
