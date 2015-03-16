@@ -17,14 +17,15 @@
 #ifndef _HEXTREME_MAPREDO_MCOLLECTOR_H
 #define _HEXTREME_MAPREDO_MCOLLECTOR_H
 
-#include "collector.h"
+#include "mcollector.h"
+#include "rcollector.h"
 
 namespace mapredo
 {
     /**
      * Collect class for mappers
      */
-    class mcollector : public collector 
+    class mcollector : public collector
     {
     public:
         /**

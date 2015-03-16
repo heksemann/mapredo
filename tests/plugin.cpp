@@ -1,5 +1,4 @@
 
-
 #include <string>
 #include <gtest/gtest.h>
 
@@ -15,23 +14,25 @@ public:
 	config.add ("lastparam", _boolean, true, "Nice param");
     }
 
-    void map (char *line, int length, mapredo::collector&) {
+    void map (char *line, int length, mapredo::mcollector&) {
 	if (_integer != 1 || _text != "1" || _boolean != true)
 	{
 	    throw std::runtime_error ("Value mismatch");
 	}
     }
-    void reduce (char* key, vlist& values, mapredo::collector&) {}
+    void reduce (char* key, vlist& values, mapredo::rcollector&) {}
 private:
     int _integer;
     std::string _text;
     bool _boolean;
 };
 
-class ncollector: public mapredo::collector
+class ncollector: public mapredo::mcollector
 {
 public:
     void collect (const char*, const  size_t) {}
+    char* reserve (const char* const key, const size_t bytes) {return nullptr;}
+    void collect_reserved (const size_t) {}
 };
 
 TEST(configuration, add)

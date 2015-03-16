@@ -5,7 +5,7 @@
 MAPREDO_FACTORIES (wordsort)
 
 void
-wordsort::map (char* line, const int length, mapredo::collector& output)
+wordsort::map (char* line, const int length, mapredo::mcollector& output)
 {
     for (int i = 0; i < length; i++)
     {
@@ -20,8 +20,7 @@ wordsort::map (char* line, const int length, mapredo::collector& output)
 }
 
 void
-wordsort::reduce (int64_t key, vlist& values,
-		  mapredo::collector& output)
+wordsort::reduce (int64_t key, vlist& values, mapredo::rcollector& output)
 {
     for (char* value : values)
     {

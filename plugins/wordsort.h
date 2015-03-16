@@ -13,8 +13,8 @@ class wordsort : public mapredo::mapreducer<int64_t>
 public:
     wordsort() {}
     virtual ~wordsort() {}
-    void map (char* line, const int length, mapredo::collector& output);
-    void reduce (int64_t key, vlist& values, mapredo::collector& output);
+    void map (char* line, const int length, mapredo::mcollector& output);
+    void reduce (int64_t key, vlist& values, mapredo::rcollector& output);
 
 private:    
 };

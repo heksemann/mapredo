@@ -32,10 +32,8 @@ file_merger::file_merger (mapredo::base& reducer,
 			  std::list<std::string>&& tmpfiles,
 			  const std::string& tmpdir,
 			  const size_t index,
-			  const size_t buffer_per_file,
 			  const size_t max_open_files) :
     _reducer (reducer),
-    _size_buffer (buffer_per_file),
     _max_open_files (max_open_files),
     _tmpfiles (tmpfiles)
 {
@@ -59,7 +57,6 @@ file_merger::file_merger (mapredo::base& reducer,
 
 file_merger::file_merger (file_merger&& other) :
     _reducer (other._reducer),
-    _size_buffer (other._size_buffer),
     _max_open_files (other._max_open_files),
     _file_prefix (std::move(other._file_prefix)),
     _tmpfiles (std::move(other._tmpfiles))
@@ -158,6 +155,32 @@ file_merger::merge_max_files (const file_merger::merge_mode mode,
 void
 file_merger::collect (const char* line, const size_t length)
 {
-    fwrite (line, length, 1, stdout);
-    fwrite ("\n", 1, 1, stdout);
+    if (_buffer_pos + length >= _buffer_size) flush();
+    memcpy (_buffer + _buffer_pos, line, length);
+    _buffer[_buffer_pos++] = '\n';
+}
+
+char*
+file_merger::reserve (const size_t bytes)
+{
+    _reserved_bytes = bytes;
+    if (_buffer_pos + bytes >= _buffer_size) flush();
+    return (_buffer + _buffer_pos);
+}
+
+void
+file_merger::collect_reserved (const size_t length)
+{
+    if (_reserved_bytes == 0)
+    {
+	throw std::runtime_error
+	    ("No memory reserved via reserve() in"
+	     " file_merger::collect_reserved()");
+    }
+
+    if (length == 0) _buffer_pos += _reserved_bytes;
+    else _buffer_pos += length;
+    _buffer[_buffer_pos++] = '\n';
+
+    _reserved_bytes = 0;
 }
