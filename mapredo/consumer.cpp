@@ -136,3 +136,15 @@ consumer::collect (const char* inbuffer, const size_t insize)
     }
     else _sorters[0].add (inbuffer, insize);
 }
+
+char*
+consumer::reserve (const char* const key, const size_t bytes)
+{
+    abort();
+}
+
+void
+consumer::collect_reserved (const size_t length)
+{
+    abort();
+}

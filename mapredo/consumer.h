@@ -65,12 +65,10 @@ public:
     void append_tmpfiles (const size_t index, std::list<std::string>& files);
 
     /** Used to collect data, called from the mapper */
-    void collect (const char* line, const size_t length);
+    virtual void collect (const char* line, const size_t length) final;
 
     /** Reserve memory buffer to store the collected value to. */
-    virtual char* reserve (const char* const key, const size_t bytes) {
-        abort();
-    }
+    virtual char* reserve (const char* const key, const size_t bytes) final;
 
     /**
      * Collect from the reserved memory buffer returned from reserve().
@@ -79,9 +77,7 @@ public:
      *              collected.  The value may not be larger than
      *              the reserved bytes.
      */
-    virtual void collect_reserved (const size_t length = 0) {
-        abort();
-    }
+    virtual void collect_reserved (const size_t length = 0) final;
 
     /**
      * @returns a thread exception if it occured or nullptr otherwise.
