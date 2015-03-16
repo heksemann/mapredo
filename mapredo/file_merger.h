@@ -143,7 +143,7 @@ private:
     std::unique_ptr<compression> _compressor;
     char _buffer[_buffer_size];
     std::unique_ptr<char[]> _coutbuffer;
-    size_t _buffer_pos;
+    size_t _buffer_pos = 0;
     size_t _coutbufpos;
     size_t _reserved_bytes = 0;
     std::exception_ptr _texception = nullptr;

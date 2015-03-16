@@ -157,6 +157,7 @@ file_merger::collect (const char* line, const size_t length)
 {
     if (_buffer_pos + length >= _buffer_size) flush();
     memcpy (_buffer + _buffer_pos, line, length);
+    _buffer_pos += length;
     _buffer[_buffer_pos++] = '\n';
 }
 
