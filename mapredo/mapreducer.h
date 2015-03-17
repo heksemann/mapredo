@@ -19,6 +19,7 @@
 
 #include "base.h"
 #include "valuelist.h"
+#include "rcollector.h"
 
 namespace mapredo
 {
@@ -49,7 +50,7 @@ namespace mapredo
 	 *               iterated over.
 	 * @param collector used 0 or more times to output reduce results.
 	 */
-	virtual void reduce (T key, vlist& values, collector& output) = 0;
+	virtual void reduce (T key, vlist& values, rcollector& output) = 0;
 
 	bool reverse() const {return _reverse;}
 	bool numeric() const {return _numeric;}

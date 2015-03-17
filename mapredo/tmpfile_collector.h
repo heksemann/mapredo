@@ -19,11 +19,12 @@
 
 #include "settings.h"
 #include "prefered_output.h"
+#include "rcollector.h"
 
 /**
  * A collector class that writes to a temporary file
  */
-class tmpfile_collector : public mapredo::collector
+class tmpfile_collector : public mapredo::rcollector
 {
 public:
     tmpfile_collector (const std::string& file_prefix,
@@ -38,9 +39,7 @@ public:
 	if (_compressed)
 	{
 	    _filename_stream << ".snappy";
-            _cinbuffer.reset (new char[0x10000]);
             _coutbuffer.reset (new char[0x15000]);
-            _cinbufpos = 0;
 	}
 	_outfile.open (_filename_stream.str(), std::ofstream::binary);
         if (!_outfile)
@@ -62,64 +61,84 @@ public:
     }
     ~tmpfile_collector() {_outfile.close();}
 
-    void collect (const char* line, const size_t length)
+    /** Collect data from reducer */
+    virtual void collect (const char* line, const size_t length) final
     {
-	if (_compressed)
-	{
-	    if (_cinbufpos + length >= 0x10000)
-	    {
-		if (_prefered_output
-		    && _prefered_output->try_write(_cinbuffer.get(),
-						   _cinbufpos))
-		{
-		    _cinbufpos = 0;
-		}
-		else
-		{
-		    _coutbufpos = 0x15000;
-		    _compressor->compress (_cinbuffer.get(),
-					   _cinbufpos,
-					   _coutbuffer.get(),
-					   _coutbufpos);
-		    _outfile.write (_coutbuffer.get(), _coutbufpos);
-		    _cinbufpos = 0;
-		}
-	    }
-	    memcpy (_cinbuffer.get() + _cinbufpos, line, length);
-	    _cinbufpos += length;
-	    _cinbuffer.get()[_cinbufpos++] = '\n';
-	}
-	else
-	{
-	    _outfile.write (line, length);
-	    _outfile.write ("\n", 1);
-	}
+	if (_buffer_pos + length >= _buffer_size) flush_internal();
+	memcpy (_buffer + _buffer_pos, line, length);
+	_buffer_pos += length;
+	_buffer[_buffer_pos++] = '\n';
     }
 
-    void flush() {
-	if (_compressed && _cinbufpos > 0)
+    /** Reserve memory buffer for reducer */
+    virtual char* reserve (const size_t bytes) final {
+	_reserved_bytes = bytes;
+	if (_buffer_pos + bytes >= _buffer_size)
 	{
-	    _coutbufpos = 0x15000;
-	    _compressor->compress (_cinbuffer.get(),
-				   _cinbufpos,
-				   _coutbuffer.get(),
-				   _coutbufpos);
-	    _outfile.write (_coutbuffer.get(), _coutbufpos);
+	    flush_internal();
+	    if (bytes >= _buffer_size)
+	    {
+		std::ostringstream stream;
+		stream << "Cannot reserve " << bytes
+		       << " bytes in tmpfile_collector::reserve(), "
+		       << (_buffer_size - 1) << " was attempted";
+		throw std::runtime_error (stream.str());
+	    }
+	    return _buffer;
 	}
+	else return (_buffer + _buffer_pos);
     }
+
+    virtual void collect_reserved (const size_t length = 0) {
+	if (_reserved_bytes == 0)
+	{
+	    throw std::runtime_error
+                ("No memory reserved via reserve() in"
+		 " tmpfile_collector::collect_reserved()");
+	}
+
+	if (length == 0) _buffer_pos += _reserved_bytes;
+	else _buffer_pos += length;
+	_buffer[_buffer_pos++] = '\n';
+
+	_reserved_bytes = 0;
+    }
+
+    void flush() {if (_buffer_pos > 0) flush_internal();}
 
     /** @returns the name of the temporary file */
     std::string filename() {return _filename_stream.str();}
 
 private:
+    void flush_internal() {
+	if (!_prefered_output
+	    || !_prefered_output->try_write(_buffer, _buffer_pos))
+	{
+	    if (_compressed)
+	    {
+		_coutbufpos = 0x15000;
+		_compressor->compress (_buffer,
+				       _buffer_pos,
+				       _coutbuffer.get(),
+				       _coutbufpos);
+		_outfile.write (_coutbuffer.get(), _coutbufpos);
+	    }
+	    else _outfile.write (_buffer, _buffer_pos);
+	}
+	_buffer_pos = 0;
+    }
+
+    static const size_t _buffer_size = 0x10000;
+
     std::ostringstream _filename_stream;
     const bool _compressed;
     std::ofstream _outfile;
     std::unique_ptr<compression> _compressor;
-    std::unique_ptr<char[]> _cinbuffer;
+    char _buffer[_buffer_size];
     std::unique_ptr<char[]> _coutbuffer;
-    size_t _cinbufpos;
+    size_t _buffer_pos = 0;
     size_t _coutbufpos;
+    size_t _reserved_bytes = 0;
     prefered_output* _prefered_output;
 };
 

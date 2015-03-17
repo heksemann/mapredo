@@ -70,31 +70,23 @@ sorter::~sorter()
 }
 
 void
-sorter::add (const char* keyvalue, const size_t size)
+sorter::add (const char* keyvalue, const size_t keylen, const size_t size)
 {
-    if (_buffer.would_overflow(size))
-    {
-#if 0
-	std::cerr << _current->lookup_used() * sizeof(lookup)
-		  << " >= " << _current->lookup_size() * sizeof(lookup)
-		  << " || "
-		  << _current->buffer_used() + size << " > "
-		  << _current->buffer_size()
-		  << " ideal ratio " << _current->ideal_ratio()
-		  << "\n";
-#endif
+    make_room (size);
+    _buffer.add (keyvalue, keylen, size);
+}
 
-	if (!_buffer.tuned())
-	{
-	    double ratio = _buffer.ideal_ratio();
+char*
+sorter::reserve (const size_t bytes)
+{
+    make_room (bytes);
+    return (_buffer.buffer() + _buffer.buffer_used());
+}
 
-	    flush();
-	    _buffer.tune (ratio);
-	}
-	else flush();
-    }
-
-    _buffer.add (keyvalue, size);
+void
+sorter::add_reserved (const size_t keylen, const size_t size)
+{
+  _buffer.add_reserved (keylen, size);
 }
 
 std::list<std::string>
@@ -252,4 +244,30 @@ sorter::flush()
     tmpfile.close();
     _buffer.clear();
     _tmpfiles.push_back (std::move(filename.str()));
+}
+
+void
+sorter::make_room (const size_t size)
+{
+    if (_buffer.would_overflow(size))
+    {
+#if 0
+	std::cerr << _current->lookup_used() * sizeof(lookup)
+		  << " >= " << _current->lookup_size() * sizeof(lookup)
+		  << " || "
+		  << _current->buffer_used() + size << " > "
+		  << _current->buffer_size()
+		  << " ideal ratio " << _current->ideal_ratio()
+		  << "\n";
+#endif
+
+	if (!_buffer.tuned())
+	{
+	    double ratio = _buffer.ideal_ratio();
+
+	    flush();
+	    _buffer.tune (ratio);
+	}
+	else flush();
+    }
 }

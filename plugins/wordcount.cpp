@@ -6,7 +6,7 @@
 MAPREDO_FACTORIES (wordcount)
 
 void
-wordcount::map (char* line, const int length, mapredo::collector& output)
+wordcount::map (char* line, const int length, mapredo::mcollector& output)
 {
     bool seen_word = false;
     int start = 0;
@@ -33,7 +33,7 @@ wordcount::map (char* line, const int length, mapredo::collector& output)
 }
 
 void
-wordcount::reduce (char* key, vlist& values, mapredo::collector& output)
+wordcount::reduce (char* key, vlist& values, mapredo::rcollector& output)
 {
     int count = 0;
 

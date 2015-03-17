@@ -17,7 +17,8 @@
 #ifndef _HEXTREME_MAPREDO_BASE_H
 #define _HEXTREME_MAPREDO_BASE_H
 
-#include "collector.h"
+#include "mcollector.h"
+#include "rcollector.h"
 #include "configuration.h"
 
 namespace mapredo
@@ -46,7 +47,7 @@ namespace mapredo
 	 * @param collector used 0 or more times to output map results.
 	 */
 	virtual void map (char* line, const int length,
-			  collector& output) = 0;
+			  mcollector& output) = 0;
 
 	/**
 	 * Function used to reduce data from mapper.

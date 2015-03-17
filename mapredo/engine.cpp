@@ -26,7 +26,6 @@
 #include <stdexcept>
 
 #include "engine.h"
-#include "collector.h"
 #ifndef _WIN32
 #include "directory.h"
 #include "plugin_loader.h"
@@ -200,7 +199,7 @@ engine::reduce()
 	    _mergers.push_back
 		(file_merger(_plugin_loader.get(),
 			     std::move(tmpfiles),
-			     _tmpdir, _unique_id++, 0x20000,
+			     _tmpdir, _unique_id++,
 			     _max_files/_parallel));
 	}
     }
@@ -251,7 +250,7 @@ engine::reduce_existing_files()
 		    (file_merger
 		     (_plugin_loader.get(),
 		      static_cast<std::list<std::string>&&>(tmpfiles),
-		      _tmpdir, _unique_id++, 0x20000, _max_files/_parallel));
+		      _tmpdir, _unique_id++, _max_files/_parallel));
 	    }
 	}
 
@@ -362,7 +361,7 @@ engine::merge_sorted (mapredo::base& mapreducer)
     file_merger merger
 	(mapreducer,
 	 static_cast<std::list<std::string>&&>(_files_final_merge),
-	 _tmpdir, _unique_id, 0x10000, _max_files);
+	 _tmpdir, _unique_id, _max_files);
     merger.merge();
 
     _files_final_merge.clear();

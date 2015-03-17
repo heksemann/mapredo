@@ -13,8 +13,8 @@ class wordcount : public mapredo::mapreducer<char*>
 public:
     wordcount() {}
     virtual ~wordcount() {}
-    void map (char* line, const int length, mapredo::collector& output);
-    void reduce (char* key, vlist& values, mapredo::collector& output);
+    void map (char* line, const int length, mapredo::mcollector& output);
+    void reduce (char* key, vlist& values, mapredo::rcollector& output);
     bool reducer_can_combine() const {return true;}
 
 private:    

@@ -65,18 +65,24 @@ public:
     /** Remove all data from the buffer and lookup table */
     void clear() {_buffer_used = _lookup_used = 0;}
 
-    void add (const char* keyvalue, size_t totalsize) {
+    /**
+     * Add a key and value to the buffer
+     * @param keyvalue tab separated key and value
+     * @param keylen length of key
+     * @param size total length of keyvalue
+     */
+    void add (const char* keyvalue, const size_t keylen, size_t totalsize) {
 	memcpy (&_buffer[_buffer_used], keyvalue, totalsize);
-	uint16_t i;
-	for (i = 0; keyvalue[i] != '\t' && i < totalsize; i++)
-	{
-	    if (keyvalue[i] == '\n')
-	    {
-		throw std::runtime_error
-		    ("The mapper must never output newlines");
-	    }
-	}
-	_lookup[_lookup_used].set_ptr (&_buffer[_buffer_used], i, ++totalsize);
+	_lookup[_lookup_used].set_ptr (&_buffer[_buffer_used], keylen,
+				       ++totalsize);
+	_buffer_used += totalsize;
+	_buffer[_buffer_used - 1] = '\n';
+	++_lookup_used;
+    }
+
+    void add_reserved (const size_t keylen, size_t totalsize) {
+	_lookup[_lookup_used].set_ptr (&_buffer[_buffer_used], keylen,
+				       ++totalsize);
 	_buffer_used += totalsize;
 	_buffer[_buffer_used - 1] = '\n';
 	++_lookup_used;

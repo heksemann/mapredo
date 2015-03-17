@@ -52,9 +52,16 @@ public:
     /**
      * Add a key and value to the buffer, flush if necessary
      * @param keyvalue tab separated key and value
-     * @param size length of keyvalue
+     * @param keylen length of key
+     * @param size total length of keyvalue
      */
-    void add (const char* keyvalue, const size_t size);
+    void add (const char* keyvalue, const size_t keylen, const size_t size);
+
+    /** Reserve space in buffer */
+    char* reserve (const size_t bytes);
+
+    /** Include reserved data in buffer */
+    void add_reserved (const size_t keylen, const size_t size);
 
     /**
      * Take the list of temporary files. This empties the list in this object
@@ -72,6 +79,8 @@ public:
     sorter (const sorter&) = delete;
 
 private:
+    void make_room (const size_t size);
+
     sorter_buffer _buffer;
     const std::string _tmpdir;
     const size_t _bytes_per_buffer;

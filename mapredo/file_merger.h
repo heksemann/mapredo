@@ -20,7 +20,7 @@
 #include <string>
 #include <list>
 
-#include "collector.h"
+#include "rcollector.h"
 #include "tmpfile_reader.h"
 #include "settings.h"
 #include "valuelist.h"
@@ -33,15 +33,16 @@ namespace mapredo
     class base;
 }
 
-/** Does merging of temporary data from the sorting phase */
-class file_merger : public mapredo::collector
+/**
+ * Does merging of temporary data from different files in the sorting phase
+ */
+class file_merger : public mapredo::rcollector
 {
 public:
     file_merger (mapredo::base& reducer,
 		 std::list<std::string>&& tmpfiles,
 		 const std::string& tmpdir,
 		 const size_t index,
-		 const size_t buffer_per_file,
 		 const size_t max_open_files);
     virtual ~file_merger();
 
@@ -63,10 +64,14 @@ public:
      */
     std::list<std::string> merge_to_files();
 
-    /**
-     * Function called by reducer to report output.
-     */
+    /** Function called by reducer to report output. */
     void collect (const char* line, const size_t length);
+
+    /** Reserve memory buffer for reducer */
+    virtual char* reserve (const size_t bytes) final;
+
+    /** Collect data from reserved memory */
+    virtual void collect_reserved (const size_t length = 0) final;
 
     /**
      * @returns a thread exception if it occured or nullptr otherwise
@@ -117,22 +122,30 @@ private:
 			  prefered_output* alt_output = nullptr);
     void compressed_sort();
     void regular_sort();
+    void flush() {
+	if (_buffer_pos > 0)
+	{
+	    fwrite (_buffer, _buffer_pos, 1, stdout);
+	    _buffer_pos = 0;
+	}
+    }
     template<typename T> void do_merge (const merge_mode mode,
 					prefered_output* alt_output,
 					const bool reverse);
 
     mapredo::base& _reducer;
-    size_t _size_buffer;
+    static const size_t _buffer_size = 0x10000;
     size_t _max_open_files;
     size_t _num_merged_files = 0;
     std::string _file_prefix;
     int _tmpfile_id = 0;
     std::list<std::string> _tmpfiles;
     std::unique_ptr<compression> _compressor;
-    std::unique_ptr<char[]> _cinbuffer;
+    char _buffer[_buffer_size];
     std::unique_ptr<char[]> _coutbuffer;
-    size_t _cinbufpos;
+    size_t _buffer_pos = 0;
     size_t _coutbufpos;
+    size_t _reserved_bytes = 0;
     std::exception_ptr _texception = nullptr;
 };
 
@@ -189,6 +202,7 @@ file_merger::do_merge (const merge_mode mode, prefered_output* alt_output,
 	    static_cast<mapredo::mapreducer<T>&>(_reducer).reduce
 		(list.get_key(), list, *this);
 	}
+	flush();
     }
     else if (_reducer.reducer_can_combine()
 	     || (_tmpfiles.empty() && mode == TO_SINGLE_FILE))
@@ -218,9 +232,8 @@ file_merger::do_merge (const merge_mode mode, prefered_output* alt_output,
 	if (compressed)
 	{
 	    filename << ".snappy";
-	    _cinbuffer.reset (new char[0x10000]);
 	    _coutbuffer.reset (new char[0x15000]);
-	    _cinbufpos = 0;
+	    _buffer_pos = 0;
 	}
 	outfile.open (filename.str(), std::ofstream::binary);
 	if (!outfile)
@@ -255,18 +268,18 @@ file_merger::do_merge (const merge_mode mode, prefered_output* alt_output,
 		auto line = proc->get_next_line (length);
 		if (compressed)
 		{
-		    if (_cinbufpos + length > 0x10000)
+		    if (_buffer_pos + length > _buffer_size)
 		    {
 			_coutbufpos = 0x15000;
-			_compressor->compress (_cinbuffer.get(),
-					       _cinbufpos,
+			_compressor->compress (_buffer,
+					       _buffer_pos,
 					       _coutbuffer.get(),
 					       _coutbufpos);
 			outfile.write (_coutbuffer.get(), _coutbufpos);
-			_cinbufpos = 0;
+			_buffer_pos = 0;
 		    }
-		    memcpy (_cinbuffer.get() + _cinbufpos, line, length);
-		    _cinbufpos += length;
+		    memcpy (_buffer + _buffer_pos, line, length);
+		    _buffer_pos += length;
 		}
 		else outfile.write (line, length);
 	    }
@@ -302,11 +315,11 @@ file_merger::do_merge (const merge_mode mode, prefered_output* alt_output,
 	    }
 	}
 
-	if (compressed && _cinbufpos > 0)
+	if (compressed && _buffer_pos > 0)
 	{
 	    _coutbufpos = 0x15000;
-	    _compressor->compress (_cinbuffer.get(),
-				   _cinbufpos,
+	    _compressor->compress (_buffer,
+				   _buffer_pos,
 				   _coutbuffer.get(),
 				   _coutbufpos);
 	    outfile.write (_coutbuffer.get(), _coutbufpos);
