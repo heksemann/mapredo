@@ -108,26 +108,6 @@ static bool sorter_r (const lookup& left, const lookup& right)
     return left.keylen() > right.keylen();
 }
 
-static bool sorter_n (const lookup& left, const lookup& right)
-{
-    return atoll (left.keyvalue()) < atol (right.keyvalue());
-}
-
-static bool sorter_rn (const lookup& left, const lookup& right)
-{
-    return atoll (left.keyvalue()) > atol (right.keyvalue());
-}
-
-static bool sorter_d (const lookup& left, const lookup& right)
-{
-    return atof (left.keyvalue()) < atof (right.keyvalue());
-}
-
-static bool sorter_rd (const lookup& left, const lookup& right)
-{
-    return atof (left.keyvalue()) > atof (right.keyvalue());
-}
-
 void
 sorter::flush()
 {
@@ -153,13 +133,21 @@ sorter::flush()
 	{
 	    std::sort (_buffer.lookup().begin(),
 		       _buffer.lookup().begin() + _buffer.lookup_used(),
-		       &sorter_n);
+		       [](const lookup& left, const lookup& right)
+		       {
+			 return (atoll(left.keyvalue())
+				 < atol(right.keyvalue()));
+		       });
 	}
 	else
 	{
 	    std::sort (_buffer.lookup().begin(),
 		       _buffer.lookup().begin() + _buffer.lookup_used(),
-		       &sorter_rn);
+		       [](const lookup& left, const lookup& right)
+		       {
+			 return (atoll(left.keyvalue())
+				 > atol(right.keyvalue()));
+		       });
 	}
 	break;
     case mapredo::base::DOUBLE:
@@ -167,13 +155,21 @@ sorter::flush()
 	{
 	    std::sort (_buffer.lookup().begin(),
 		       _buffer.lookup().begin() + _buffer.lookup_used(),
-		       &sorter_d);
+		       [](const lookup& left, const lookup& right)
+		       {
+			 return (atof(left.keyvalue())
+				 < atof(right.keyvalue()));
+		       });
 	}
 	else
 	{
 	    std::sort (_buffer.lookup().begin(),
 		       _buffer.lookup().begin() + _buffer.lookup_used(),
-		       &sorter_rd);
+		       [](const lookup& left, const lookup& right)
+		       {
+			 return (atof(left.keyvalue())
+				 > atof(right.keyvalue()));
+		       });
 	}
 	break;
     case mapredo::base::UNKNOWN:
