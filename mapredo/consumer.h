@@ -70,13 +70,7 @@ public:
     /** Reserve memory buffer to store the collected value to. */
     virtual char* reserve (const char* const key, const size_t bytes) final;
 
-    /**
-     * Collect from the reserved memory buffer returned from reserve().
-     * @param bytes the number of bytes to provide from the buffer.
-     *              If left out, the reserved number of bytes is
-     *              collected.  The value may not be larger than
-     *              the reserved bytes.
-     */
+    /** Collect from the reserved memory buffer returned from reserve(). */
     virtual void collect_reserved (const size_t length = 0) final;
 
     /**
@@ -102,6 +96,10 @@ private:
 
     std::vector<sorter> _sorters;
     std::unordered_map<int, std::list<std::string>> _tmpfiles;
+
+    size_t _reserved_bucket;
+    size_t _reserved_keylen;
+    size_t _reserved_valuelen;
 };
 
 #endif

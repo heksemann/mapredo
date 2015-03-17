@@ -113,38 +113,53 @@ consumer::work (buffer_trader& trader)
     }
 }
 
-static unsigned int hash (const char* str, size_t siz)
+static unsigned int hash (const char* str, size_t siz, size_t& keylen,
+			  const char delim = '\t')
 {
     unsigned int result = 0x55555555;
-    size_t i;
 
-    for (i = 0; i < siz && str[i] != '\t'; i++)
+    for (keylen = 0; keylen < siz && str[keylen] != delim; keylen++)
     {
-	result ^= str[i];
+	result ^= str[keylen];
 	result = ((result << 5) | (result >> 27));
     }
     return result;
 }
 
-
 void
 consumer::collect (const char* inbuffer, const size_t insize)
 {
-    if (_buckets > 1)
-    {
-	_sorters[hash(inbuffer, insize) % _buckets].add (inbuffer, insize);
-    }
-    else _sorters[0].add (inbuffer, insize);
+    size_t keylen;
+
+    _sorters[hash(inbuffer, insize, keylen) % _buckets].add
+	(inbuffer, keylen, insize);
 }
 
 char*
 consumer::reserve (const char* const key, const size_t bytes)
 {
-    abort();
+    _reserved_bucket = hash(key, 0, _reserved_keylen, '\0') % _buckets;
+    _reserved_valuelen = bytes;
+
+    char* buf = _sorters[_reserved_bucket].reserve
+	(_reserved_keylen + 1 + bytes);
+    memcpy (buf, key, _reserved_keylen);
+    buf[_reserved_keylen] = '\t';
+
+    return buf + _reserved_keylen + 1;
 }
 
 void
 consumer::collect_reserved (const size_t length)
 {
-    abort();
+    if (length == 0)
+    {
+	_sorters[_reserved_bucket].add_reserved
+	    (_reserved_keylen, _reserved_keylen + 1 + _reserved_valuelen);
+    }
+    else
+    {
+	_sorters[_reserved_bucket].add_reserved
+	    (_reserved_keylen, _reserved_keylen + 1 + length);
+    }
 }
