@@ -25,9 +25,7 @@
 template <class T> class data_reader
 {
 public:
-    virtual ~data_reader() {
-	if (_buffer) delete[] _buffer;
-    }
+    virtual ~data_reader() {}
 
     /**
      * Peek at the next key from the data source.  This function may

@@ -22,7 +22,7 @@
 #include <list>
 
 #include "collector.h"
-#include "file_merger.h"
+#include "merger_base.h"
 #include "base.h"
 #ifndef _WIN32
 #include "plugin_loader.h"
@@ -108,7 +108,7 @@ private:
     std::list<consumer> _consumers;
     buffer_trader _buffer_trader;
 
-    std::deque<file_merger> _mergers;
+    std::deque<merger_base> _mergers;
     std::list<std::string> _files_final_merge;
 };
 

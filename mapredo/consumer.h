@@ -23,6 +23,7 @@
 #include "mcollector.h"
 #include "sorter.h"
 #include "buffer_trader.h"
+#include "merge_cache.h"
 
 class plugin_loader;
 class mapreducer;
@@ -34,12 +35,13 @@ class consumer : public mapredo::mcollector
 {
 public:
     /**
-     * Create object and start thread waiting for 
+     * Create object and start thread waiting for incoming unsorted data.
      * @param mapreducer map-reducer plugin object.
      * @param tmpdir root of temporary directory.
      * @param is_subdir true if the directory is a specified subdirectory.
      * @param type type to use for sorting.
      * @param reverse if true, sort in descending order instead of ascending.
+     * @param cache buffer for sorted data chunks. 
      */
     consumer (mapredo::base& mapred,
 	      const std::string& tmpdir,
@@ -47,7 +49,8 @@ public:
 	      const uint16_t buckets,
 	      const uint16_t worker_id, 
 	      const size_t bytes_buffer,
-	      const bool reverse);
+	      const bool reverse,
+	      merge_cache& cache);
     virtual ~consumer();
 
     /**
@@ -64,6 +67,10 @@ public:
     /** Append all temporary files of a given index to a list of files */
     void append_tmpfiles (const size_t index, std::list<std::string>& files);
 
+    /** Append all cached sorted buffers of a givend index to a list */
+    template <typename T> void
+    append_cachereaders (const size_t index, std::forward_list<T>);
+
     /** Used to collect data, called from the mapper */
     virtual void collect (const char* line, const size_t length) final;
 
@@ -78,7 +85,6 @@ public:
      *          Do not call this until the thread has been joined.
      */
     std::exception_ptr& exception_ptr() {return _texception;}
-
 
     consumer(consumer&&) = delete;
     consumer& operator=(const consumer&) = delete;
@@ -101,5 +107,11 @@ private:
     size_t _reserved_keylen;
     size_t _reserved_valuelen;
 };
+
+template <typename T> void
+consumer::append_cachereaders (const size_t index, std::forward_list<T>)
+{
+    
+}
 
 #endif

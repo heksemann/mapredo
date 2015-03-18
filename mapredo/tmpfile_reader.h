@@ -29,7 +29,7 @@
  * Used to read a temporary file while merge sorting
  */
 template <class T>
-class tmpfile_reader : public data_reader<T>
+class tmpfile_reader final : public data_reader<T>
 {
 public:
     /**
@@ -40,9 +40,8 @@ public:
     tmpfile_reader (const std::string& filename,
 		    const int buffer_size,
 		    const bool delete_file_after);
-    //tmpfile_reader (tmpfile_reader&& other)
-    //: _file(std::move(other._file)), _pos(other._pos);
     ~tmpfile_reader() {
+        if (this->_buffer) delete[] this->_buffer;
 	if (_cbuffer) delete[] _cbuffer;
 	if (_fp) fclose(_fp);
 	if (_delete_file_after) remove (_filename.c_str());

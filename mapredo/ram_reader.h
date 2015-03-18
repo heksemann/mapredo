@@ -20,25 +20,25 @@
 #include "data_reader.h"
 
 /**
- * Used to read a temporary file while merge sorting
+ * Used when reading temporary files while merge sorting
  */
 template <class T>
-class ram_reader : public data_reader<T>
+class ram_reader final : public data_reader<T>
 {
 public:
-    /** @param buffer memory buffer to be provided to the file merger */
-    ram_reader (const char* buffer, const size_t size)  :
-	_rambuf (buffer), _size (size) {
+    /**
+     * @param buffer memory buffer to be provided to the file merger
+     * @param size buffer size
+     */
+    ram_reader (char* const buffer, const size_t size)  {
+        this->buffer = buffer;
+	this->_end_pos = size;
 	this->fill_next_line();
     }
     ~ram_reader() {}
 
     ram_reader (const ram_reader&) = delete;
     ram_reader& operator=(const ram_reader&) = delete;
-
-private:
-    char* _rambuf;
-    size_t _size;
 };
 
 #endif

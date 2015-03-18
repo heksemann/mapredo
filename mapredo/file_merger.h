@@ -19,14 +19,16 @@
 
 #include <string>
 #include <list>
+#include <forward_list>
 
-#include "rcollector.h"
+#include "merger_base.h"
 #include "tmpfile_reader.h"
 #include "settings.h"
 #include "valuelist.h"
 #include "mapreducer.h"
 #include "tmpfile_collector.h"
 #include "data_reader_queue.h"
+#include "key_holder.h"
 
 namespace mapredo
 {
@@ -36,33 +38,78 @@ namespace mapredo
 /**
  * Does merging of temporary data from different files in the sorting phase
  */
-class file_merger : public mapredo::rcollector
+template <class T>
+class file_merger final : public merger_base
 {
 public:
     file_merger (mapredo::base& reducer,
 		 std::list<std::string>&& tmpfiles,
+		 std::forward_list<data_reader<T>>&& tmpdata,
 		 const std::string& tmpdir,
 		 const size_t index,
 		 const size_t max_open_files);
-    virtual ~file_merger();
+    ~file_merger() {}
 
     /**
      * Go through all sorted temporary files and generate a single sorted
      * stream.
      */
-    void merge();
+    void merge() {
+	while (!_tmpfiles.empty())
+	{
+	    merge_max_files (TO_OUTPUT);
+	    if (_texception) return;
+	}
+    }
 
     /**
      * Merge to a single file and return the file name.  This may also
      * output final data to an alternate sink.
      * @param alt_output if not nullptr, attempt to write to this first
      */
-    std::string merge_to_file (prefered_output* alt_output);
+    std::string merge_to_file (prefered_output* alt_output) {
+	try
+	{
+	    do
+	    {
+		merge_max_files (TO_SINGLE_FILE, alt_output);
+	    }
+	    while (_tmpfiles.size() > 1);
+
+	    return _tmpfiles.front();
+	}
+	catch (...)
+	{
+	    _texception = std::current_exception();
+	    return ("");
+	}
+    }
 
     /**
      * Merge to at most max_open_files file and return the file names.
      */
-    std::list<std::string> merge_to_files();
+    std::list<std::string> merge_to_files() {
+	try
+	{
+	    while (_tmpfiles.size() > _num_merged_files
+		   || _tmpfiles.size() > _max_open_files)
+	    {
+		if (_tmpfiles.size() == _num_merged_files)
+		{
+		    // We have to re-merge files because we still have too many
+		    _num_merged_files = 0;
+		}
+		merge_max_files (TO_MAX_FILES);
+	    }
+
+	    return _tmpfiles;
+	}
+	catch (...)
+	{
+	    _texception = std::current_exception();
+	    return (std::list<std::string>());
+	}
+    }
 
     /** Function called by reducer to report output. */
     void collect (const char* line, const size_t length);
@@ -73,9 +120,7 @@ public:
     /** Collect data from reserved memory */
     virtual void collect_reserved (const size_t length = 0) final;
 
-    /**
-     * @returns a thread exception if it occured or nullptr otherwise
-     */
+    /** @returns a thread exception if it occured or nullptr otherwise */
     std::exception_ptr& exception_ptr() {return _texception;}
 
     file_merger (file_merger&& other);
@@ -88,40 +133,7 @@ private:
 	TO_SINGLE_FILE,
 	TO_OUTPUT
     };
-
-    template <class T> class key_holder {
-    public:
-	template<class U = T,
-		 typename std::enable_if<std::is_fundamental<U>::value>
-                 ::type* = nullptr>
-	U get_key (data_reader<T>& reader) {
-	    auto key = reader.next_key();
-	    if (key) return *key;
-	    throw std::runtime_error
-		("Attempted to key_handler::get_key() on an empty file");
-	}
-
-	template<class U = T,
-                 typename std::enable_if<std::is_same<U,char*>::value,
-                                         bool>::type* = nullptr>
-	char* get_key (data_reader<T>& reader) {
-	    auto key = reader.next_key();
-	    if (key)
-	    {
-		_key_copy = *key;
-		return const_cast<char*>(_key_copy.c_str());
-	    }
-	    throw std::runtime_error
-		("Attempted to key_handler::get_key() on an empty file");
-	}
-    private:
-	std::string _key_copy;
-    };
     
-    void merge_max_files (const merge_mode mode,
-			  prefered_output* alt_output = nullptr);
-    void compressed_sort();
-    void regular_sort();
     void flush() {
 	if (_buffer_pos > 0)
 	{
@@ -129,9 +141,8 @@ private:
 	    _buffer_pos = 0;
 	}
     }
-    template<typename T> void do_merge (const merge_mode mode,
-					prefered_output* alt_output,
-					const bool reverse);
+    void merge_max_files (const merge_mode mode,
+			  prefered_output* alt_output = nullptr);
 
     mapredo::base& _reducer;
     static const size_t _buffer_size = 0x10000;
@@ -149,11 +160,49 @@ private:
     std::exception_ptr _texception = nullptr;
 };
 
-template <typename T> void
-file_merger::do_merge (const merge_mode mode, prefered_output* alt_output,
-		       const bool reverse)
+template <class T>
+file_merger<T>::file_merger (mapredo::base& reducer,
+			     std::list<std::string>&& tmpfiles,
+			     std::forward_list<data_reader<T>>&& tmpdata,
+			     const std::string& tmpdir,
+			     const size_t index,
+			     const size_t max_open_files) :
+    _reducer (reducer),
+    _max_open_files (max_open_files),
+    _tmpfiles (tmpfiles)
 {
-    data_reader_queue<T> queue (reverse);
+    std::ostringstream filename;
+
+    filename << tmpdir << "/merge_" << std::this_thread::get_id()
+	     << ".w" << index << '.';
+    _file_prefix = filename.str();
+
+    if (max_open_files < 3)
+    {
+	throw std::runtime_error ("Can not operate on less than three files"
+				  " per bucket");
+    }
+
+    if (settings::instance().compressed()) 
+    {
+        _compressor.reset (new compression());
+    }
+}
+
+template <class T>
+file_merger<T>::file_merger (file_merger&& other) :
+    _reducer (other._reducer),
+    _max_open_files (other._max_open_files),
+    _file_prefix (std::move(other._file_prefix)),
+    _tmpfiles (std::move(other._tmpfiles))
+{}
+
+
+template <class T> void
+file_merger<T>::merge_max_files (const merge_mode mode,
+				 prefered_output* alt_output)
+{
+    data_reader_queue<T> queue (settings::instance().reverse_sort());
     size_t files;
 
     if (mode == TO_MAX_FILES)

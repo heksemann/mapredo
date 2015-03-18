@@ -33,9 +33,10 @@
 #include "directory_win32.h"
 #include "plugin_loader_win32.h"
 #endif
-#include "settings.h"
 #include "compression.h"
+#include "file_merger.h"
 #include "prefered_stdout_output.h"
+#include "settings.h"
 
 engine::engine (const std::string& plugin,
 		const std::string& tmpdir,
@@ -182,6 +183,8 @@ engine::complete_input (input_buffer* data)
 void
 engine::reduce()
 {
+    auto& mapreducer (_plugin_loader.get());
+
     for (size_t i = 0; i < _parallel; i++)
     {
 	std::list<std::string> tmpfiles;
@@ -196,16 +199,49 @@ engine::reduce()
 	}
 	else if (tmpfiles.size())
 	{
-	    _mergers.push_back
-		(file_merger(_plugin_loader.get(),
-			     std::move(tmpfiles),
-			     _tmpdir, _unique_id++,
-			     _max_files/_parallel));
+	    switch (mapreducer.type())
+	    {
+	    case mapredo::base::keytype::STRING:
+	    {
+		std::forward_list<data_reader<char*>> cached_data;
+		_mergers.emplace_back
+		    (file_merger<char*>(_plugin_loader.get(),
+					std::move(tmpfiles),
+					std::move(cached_data),
+					_tmpdir, _unique_id++,
+					_max_files/_parallel));
+		break;
+	    }
+	    case mapredo::base::keytype::DOUBLE:
+	    {
+		std::forward_list<data_reader<double>> cached_data;
+		_mergers.emplace_back
+		    (file_merger<double>(_plugin_loader.get(),
+					 std::move(tmpfiles),
+					 std::move(cached_data),
+					 _tmpdir, _unique_id++,
+					 _max_files/_parallel));
+	    }
+	    case mapredo::base::keytype::INT64:
+	    {
+		std::forward_list<data_reader<int64_t>> cached_data;
+		_mergers.emplace_back
+		    (file_merger<int64_t>(_plugin_loader.get(),
+					  std::move(tmpfiles),
+					  std::move(cached_data),
+					  _tmpdir, _unique_id++,
+					  _max_files/_parallel));
+	    }
+	    case mapredo::base::keytype::UNKNOWN:
+	    {
+		throw std::runtime_error ("Program error, keytype not set"
+					  " in engine::reduce()");
+	    }
+	    }
 	}
     }
     _consumers.clear();
 
-    auto& mapreducer (_plugin_loader.get());
     if (settings::instance().sort_output()) merge_sorted (mapreducer);
     else merge_grouped (mapreducer);
 }
@@ -297,7 +333,7 @@ engine::merge_grouped (mapredo::base& mapreducer)
     for (auto& merger: _mergers)
     {
 	*riter++ = std::async (std::launch::async,
-			       &file_merger::merge_to_file,
+			       &merger_base::merge_to_file,
 			       &merger, &prefered_sink);
     }
 
@@ -340,7 +376,7 @@ engine::merge_sorted (mapredo::base& mapreducer)
 	auto& merger (*iter);
 
 	*riter = std::async (std::launch::async,
-			     &file_merger::merge_to_files,
+			     &merger_base::merge_to_files,
 			     &merger);
     }
 

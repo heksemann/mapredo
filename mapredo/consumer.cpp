@@ -23,7 +23,8 @@ consumer::consumer (mapredo::base& mapreducer,
 		    const uint16_t buckets,
 		    const uint16_t worker_id,
 		    const size_t bytes_buffer,
-		    const bool reverse) :
+		    const bool reverse,
+		    merge_cache& cache) :
     _mapreducer (mapreducer),
     _tmpdir (tmpdir),
     _is_subdir (is_subdir),
@@ -33,7 +34,7 @@ consumer::consumer (mapredo::base& mapreducer,
     for (size_t i = 0; i < buckets; i++)
     {
 	_sorters.emplace_back (_tmpdir, i, worker_id, bytes_buffer,
-			       mapreducer.type(), reverse);
+			       mapreducer.type(), cache, reverse);
     }
 }
 
