@@ -22,10 +22,8 @@
 #include <forward_list>
 
 #include "ram_reader.h"
-
-namespace mapredo
-{
-}
+#include "base.h"
+#include "data_reader_queue.h"
 
 /**
  * Keeps sorted data in memory for use in merge sorting.  This allows
@@ -33,22 +31,20 @@ namespace mapredo
  * of the sorter buffers.  Performance will suffer if the sorter
  * buffers are too large to fit in L2 cache.
  */
-template <class T>
 class merge_cache
 {
 public:
     /*
+     * @param reducer map-reducer plugin object
      * @param file_prefix prefix for created files
      * @param total_size total number of bytes in the cache
-     * @param buckets number of buffers to spread the total size into
+     * @param index worker index
      */
-    merge_cache (const std::string& file_prefix,
-		 
+    merge_cache (mapredo::base& reducer,
+		 const std::string& tmpdir,
+		 const std::string& file_prefix,
 		 const size_t cache_size,
-		 const uint16_t buckets) :
-	_file_prefix(file_prefix),
-	_buffer(new char[cache_size]),
-	_buffer_size (cache_size) {}
+		 const size_t index);
 
     /**
      * Add more data to the cache.  If the buffer is full, data will be merged
@@ -59,28 +55,33 @@ public:
      */
     void add (const uint16_t hash_index,
 	      const char* buffer,
-	      const size_t size) {
-	if (_buffer_size > 0)
-	{
-	    
-	}
-    }
+	      const size_t size);
 
     /**
-     * Take the list of RAM readers for a specific hash index.  This
-     * empties the list in this object.
+     * Take the list of buffers a hash index.  This removes the corresponding
+     * buffer list in this object.
      */
-    std::forward_list<ram_reader<T>> grab_readers (const uint16_t hash_index) {
-	
-    }
+    template <typename T>
+    data_reader_queue<T> grab_readers (const uint16_t hash_index);
 
 private:
+    using buffer_list = std::vector<std::pair<char*,uint32_t>>;
+    
+    mapredo::base& _reducer;
+    std::string _tmpdir;
     std::string _file_prefix;
     std::unique_ptr<char[]> _buffer;
     const size_t _buffer_size;
+    const size_t _index;
     size_t _buffer_pos = 0;
-    std::unordered_map<int, std::forward_list<ram_reader<T>>> _buckets;
-    std::vector<std::string> _tmpfiles;
+    std::unordered_map<int, buffer_list> _buckets;
+    std::unordered_map<int, std::string> _tmpfiles;
 };
+
+template <typename T> data_reader_queue<T>
+merge_cache::grab_readers (const uint16_t hash_index)
+{
+    
+}
 
 #endif

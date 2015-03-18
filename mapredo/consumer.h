@@ -59,9 +59,7 @@ public:
      */
     void start_thread (buffer_trader& trader);
 
-    /**
-     * Wait for input data processing thread to finish.
-     */
+    /** Wait for input data processing thread to finish. */
     void join_thread();
 
     /** Append all temporary files of a given index to a list of files */

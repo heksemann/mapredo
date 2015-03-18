@@ -20,15 +20,16 @@
 #include <string>
 #include <list>
 #include <forward_list>
+#include <thread>
 
-#include "merger_base.h"
 #include "tmpfile_reader.h"
 #include "settings.h"
 #include "valuelist.h"
 #include "mapreducer.h"
 #include "tmpfile_collector.h"
 #include "data_reader_queue.h"
-#include "key_holder.h"
+//#include "key_holder.h"
+template <class T> class key_holder;
 
 namespace mapredo
 {
@@ -38,13 +39,16 @@ namespace mapredo
 /**
  * Does merging of temporary data from different files in the sorting phase
  */
-template <class T>
-class file_merger final : public merger_base
+class file_merger final
 {
 public:
+    /**
+     * @param reducer map-reducer plugin object
+     * @param tmpdir working directory for temporary files
+     * @param index worker index
+     * @param max_open_files maximum number of files open at any time
+     */
     file_merger (mapredo::base& reducer,
-		 std::list<std::string>&& tmpfiles,
-		 std::forward_list<data_reader<T>>&& tmpdata,
 		 const std::string& tmpdir,
 		 const size_t index,
 		 const size_t max_open_files);
@@ -54,10 +58,12 @@ public:
      * Go through all sorted temporary files and generate a single sorted
      * stream.
      */
-    void merge() {
-	while (!_tmpfiles.empty())
+    template <typename T>
+    void merge (std::list<std::string>&& tmpfiles,
+		data_reader_queue<T>&& cache_readers) {
+	while (!tmpfiles.empty())
 	{
-	    merge_max_files (TO_OUTPUT);
+	    merge_max_files<T> (TO_OUTPUT);
 	    if (_texception) return;
 	}
     }
@@ -67,12 +73,15 @@ public:
      * output final data to an alternate sink.
      * @param alt_output if not nullptr, attempt to write to this first
      */
-    std::string merge_to_file (prefered_output* alt_output) {
+    template <typename T>
+    std::string merge_to_file (std::list<std::string>&& tmpfiles,
+			       data_reader_queue<T>&& cache_readers,
+			       prefered_output* alt_output) {
 	try
 	{
 	    do
 	    {
-		merge_max_files (TO_SINGLE_FILE, alt_output);
+		merge_max_files<T> (TO_SINGLE_FILE, alt_output);
 	    }
 	    while (_tmpfiles.size() > 1);
 
@@ -88,7 +97,9 @@ public:
     /**
      * Merge to at most max_open_files file and return the file names.
      */
-    std::list<std::string> merge_to_files() {
+    template <typename T>
+    std::list<std::string> merge_to_files(std::list<std::string>&& tmpfiles,
+					  data_reader_queue<T>&& readers) {
 	try
 	{
 	    while (_tmpfiles.size() > _num_merged_files
@@ -99,7 +110,7 @@ public:
 		    // We have to re-merge files because we still have too many
 		    _num_merged_files = 0;
 		}
-		merge_max_files (TO_MAX_FILES);
+		merge_max_files<T> (TO_MAX_FILES);
 	    }
 
 	    return _tmpfiles;
@@ -141,6 +152,7 @@ private:
 	    _buffer_pos = 0;
 	}
     }
+    template <typename T>
     void merge_max_files (const merge_mode mode,
 			  prefered_output* alt_output = nullptr);
 
@@ -160,16 +172,12 @@ private:
     std::exception_ptr _texception = nullptr;
 };
 
-template <class T>
-file_merger<T>::file_merger (mapredo::base& reducer,
-			     std::list<std::string>&& tmpfiles,
-			     std::forward_list<data_reader<T>>&& tmpdata,
-			     const std::string& tmpdir,
-			     const size_t index,
-			     const size_t max_open_files) :
+file_merger::file_merger (mapredo::base& reducer,
+			  const std::string& tmpdir,
+			  const size_t index,
+			  const size_t max_open_files) :
     _reducer (reducer),
-    _max_open_files (max_open_files),
-    _tmpfiles (tmpfiles)
+    _max_open_files (max_open_files)
 {
     std::ostringstream filename;
 
@@ -189,18 +197,16 @@ file_merger<T>::file_merger (mapredo::base& reducer,
     }
 }
 
-template <class T>
-file_merger<T>::file_merger (file_merger&& other) :
+file_merger::file_merger (file_merger&& other) :
     _reducer (other._reducer),
     _max_open_files (other._max_open_files),
-    _file_prefix (std::move(other._file_prefix)),
-    _tmpfiles (std::move(other._tmpfiles))
+    _file_prefix (std::move(other._file_prefix))
 {}
 
 
-template <class T> void
-file_merger<T>::merge_max_files (const merge_mode mode,
-				 prefered_output* alt_output)
+template <typename T> void
+file_merger::merge_max_files (const merge_mode mode,
+			      prefered_output* alt_output)
 {
     data_reader_queue<T> queue (settings::instance().reverse_sort());
     size_t files;

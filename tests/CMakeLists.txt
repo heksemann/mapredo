@@ -2,7 +2,6 @@
 add_executable(unittests
   buffer_trader.cpp
   data_reader.cpp
-  merge_cache.cpp
   plugin.cpp
   test.cpp
   ../mapredo/directory.cpp)

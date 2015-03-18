@@ -36,6 +36,11 @@ public:
 	else _queue.push(reader);
     }
 
+    template <class... A> void emplace (A&&... args) {
+	if (_reverse) _rqueue.emplace(args...);
+	else _queue.emplace(args...);
+    }
+
     data_reader<T>* const top() {
 	return (_reverse ? _rqueue.top() : _queue.top());
     }
