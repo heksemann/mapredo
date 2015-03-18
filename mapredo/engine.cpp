@@ -205,32 +205,32 @@ engine::reduce()
 	    {
 		std::forward_list<data_reader<char*>> cached_data;
 		_mergers.emplace_back
-		    (file_merger<char*>(_plugin_loader.get(),
-					std::move(tmpfiles),
-					std::move(cached_data),
-					_tmpdir, _unique_id++,
-					_max_files/_parallel));
+		    (file_merger(_plugin_loader.get(),
+				 std::move(tmpfiles),
+				 std::move(cached_data),
+				 _tmpdir, _unique_id++,
+				 _max_files/_parallel));
 		break;
 	    }
 	    case mapredo::base::keytype::DOUBLE:
 	    {
 		std::forward_list<data_reader<double>> cached_data;
 		_mergers.emplace_back
-		    (file_merger<double>(_plugin_loader.get(),
-					 std::move(tmpfiles),
-					 std::move(cached_data),
-					 _tmpdir, _unique_id++,
-					 _max_files/_parallel));
+		    (file_merger(_plugin_loader.get(),
+				 std::move(tmpfiles),
+				 std::move(cached_data),
+				 _tmpdir, _unique_id++,
+				 _max_files/_parallel));
 	    }
 	    case mapredo::base::keytype::INT64:
 	    {
 		std::forward_list<data_reader<int64_t>> cached_data;
 		_mergers.emplace_back
-		    (file_merger<int64_t>(_plugin_loader.get(),
-					  std::move(tmpfiles),
-					  std::move(cached_data),
-					  _tmpdir, _unique_id++,
-					  _max_files/_parallel));
+		    (file_merger(_plugin_loader.get(),
+				 std::move(tmpfiles),
+				 std::move(cached_data),
+				 _tmpdir, _unique_id++,
+				 _max_files/_parallel));
 	    }
 	    case mapredo::base::keytype::UNKNOWN:
 	    {

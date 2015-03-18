@@ -22,7 +22,6 @@
 #include <list>
 
 #include "collector.h"
-#include "merger_base.h"
 #include "base.h"
 #ifndef _WIN32
 #include "plugin_loader.h"
@@ -31,6 +30,7 @@
 #endif
 #include "buffer_trader.h"
 #include "consumer.h"
+#include "file_merger.h"
 
 class buffer_trader;
 
@@ -108,7 +108,7 @@ private:
     std::list<consumer> _consumers;
     buffer_trader _buffer_trader;
 
-    std::deque<merger_base> _mergers;
+    std::deque<file_merger> _mergers;
     std::list<std::string> _files_final_merge;
 };
 
