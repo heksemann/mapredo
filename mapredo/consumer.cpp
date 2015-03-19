@@ -24,7 +24,7 @@ consumer::consumer (mapredo::base& mapreducer,
 		    const uint16_t worker_id,
 		    const size_t bytes_buffer,
 		    const bool reverse,
-		    merge_cache& cache) :
+		    merge_cache* cache) :
     _mapreducer (mapreducer),
     _tmpdir (tmpdir),
     _is_subdir (is_subdir),

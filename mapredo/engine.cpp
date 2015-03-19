@@ -33,10 +33,9 @@
 #include "directory_win32.h"
 #include "plugin_loader_win32.h"
 #endif
-#include "compression.h"
-#include "file_merger.h"
-#include "prefered_stdout_output.h"
 #include "settings.h"
+#include "compression.h"
+#include "prefered_stdout_output.h"
 
 engine::engine (const std::string& plugin,
 		const std::string& tmpdir,
@@ -87,9 +86,14 @@ engine::prepare_input()
 
 	for (uint16_t i = 0; i < _parallel; i++)
 	{
-	    _consumers.emplace_back (_plugin_loader.get(), _tmpdir, _is_subdir,
+	    mapredo::base& mapper (_plugin_loader.get());
+
+	    _merge_caches.emplace_back (mapper, _tmpdir, "FIXME",
+					1000000, i);
+	    _consumers.emplace_back (mapper, _tmpdir, _is_subdir,
 				     _parallel, i, _bytes_buffer,
-				     settings::instance().reverse_sort());
+				     settings::instance().reverse_sort(),
+				     &_merge_caches.back());
 	    _consumers.back().start_thread (_buffer_trader);
 	}
 
@@ -183,65 +187,45 @@ engine::complete_input (input_buffer* data)
 void
 engine::reduce()
 {
-    auto& mapreducer (_plugin_loader.get());
-
     for (size_t i = 0; i < _parallel; i++)
     {
 	std::list<std::string> tmpfiles;
+	merge_cache::buffer_list buffers;
 
 	for (auto& consumer: _consumers)
 	{
 	    consumer.append_tmpfiles (i, tmpfiles);
 	}
-	if (tmpfiles.size() == 1 && settings::instance().sort_output())
+	for (auto& cache: _merge_caches)
 	{
-	    _files_final_merge.push_back (tmpfiles.front());
+	    cache.append_tmpfiles (i, tmpfiles);
+	    cache.append_cache_buffers (i, buffers);
 	}
-	else if (tmpfiles.size())
+
+	if ((tmpfiles.size() + buffers.size() <= 1)
+	    && settings::instance().sort_output())
 	{
-	    switch (mapreducer.type())
+	    if (tmpfiles.size())
 	    {
-	    case mapredo::base::keytype::STRING:
+		_files_final_merge.push_back (tmpfiles.front());
+	    }
+	    if (buffers.size())
 	    {
-		std::forward_list<data_reader<char*>> cached_data;
-		_mergers.emplace_back
-		    (file_merger(_plugin_loader.get(),
-				 std::move(tmpfiles),
-				 std::move(cached_data),
-				 _tmpdir, _unique_id++,
-				 _max_files/_parallel));
-		break;
+		_buffers_final_merge.push_back (buffers.front());
 	    }
-	    case mapredo::base::keytype::DOUBLE:
-	    {
-		std::forward_list<data_reader<double>> cached_data;
-		_mergers.emplace_back
-		    (file_merger(_plugin_loader.get(),
-				 std::move(tmpfiles),
-				 std::move(cached_data),
-				 _tmpdir, _unique_id++,
-				 _max_files/_parallel));
-	    }
-	    case mapredo::base::keytype::INT64:
-	    {
-		std::forward_list<data_reader<int64_t>> cached_data;
-		_mergers.emplace_back
-		    (file_merger(_plugin_loader.get(),
-				 std::move(tmpfiles),
-				 std::move(cached_data),
-				 _tmpdir, _unique_id++,
-				 _max_files/_parallel));
-	    }
-	    case mapredo::base::keytype::UNKNOWN:
-	    {
-		throw std::runtime_error ("Program error, keytype not set"
-					  " in engine::reduce()");
-	    }
-	    }
+	}
+	else
+	{
+	    _mergers.emplace_back (_plugin_loader.get(),
+				   _tmpdir, _unique_id++,
+				   _max_files/_parallel,
+				   std::move(tmpfiles),
+				   std::move(buffers));
 	}
     }
     _consumers.clear();
 
+    auto& mapreducer (_plugin_loader.get());
     if (settings::instance().sort_output()) merge_sorted (mapreducer);
     else merge_grouped (mapreducer);
 }
@@ -285,8 +269,9 @@ engine::reduce_existing_files()
 		_mergers.push_back
 		    (file_merger
 		     (_plugin_loader.get(),
+		      _tmpdir, _unique_id++, _max_files/_parallel,
 		      static_cast<std::list<std::string>&&>(tmpfiles),
-		      _tmpdir, _unique_id++, _max_files/_parallel));
+		      merge_cache::buffer_list()));
 	    }
 	}
 
@@ -315,7 +300,7 @@ engine::merge_grouped (mapredo::base& mapreducer)
 {
     auto iter = _mergers.begin();
 
-    if (_files_final_merge.empty())
+    if (_files_final_merge.empty() && _buffers_final_merge.empty())
     {
 	if (_mergers.empty()) return;
 	if (_mergers.size() == 1)
@@ -333,7 +318,7 @@ engine::merge_grouped (mapredo::base& mapreducer)
     for (auto& merger: _mergers)
     {
 	*riter++ = std::async (std::launch::async,
-			       &merger_base::merge_to_file,
+			       &file_merger::merge_to_file,
 			       &merger, &prefered_sink);
     }
 
@@ -376,7 +361,7 @@ engine::merge_sorted (mapredo::base& mapreducer)
 	auto& merger (*iter);
 
 	*riter = std::async (std::launch::async,
-			     &merger_base::merge_to_files,
+			     &file_merger::merge_to_files,
 			     &merger);
     }
 
@@ -396,8 +381,9 @@ engine::merge_sorted (mapredo::base& mapreducer)
 
     file_merger merger
 	(mapreducer,
+	 _tmpdir, _unique_id, _max_files,
 	 static_cast<std::list<std::string>&&>(_files_final_merge),
-	 _tmpdir, _unique_id, _max_files);
+	 merge_cache::buffer_list());
     merger.merge();
 
     _files_final_merge.clear();

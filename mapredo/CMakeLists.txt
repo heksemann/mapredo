@@ -5,6 +5,7 @@ add_library (lmapredo SHARED
   consumer.cpp
   directory.cpp
   engine.cpp
+  file_merger.cpp
   merge_cache.cpp
   settings.cpp
   sorter_buffer.cpp

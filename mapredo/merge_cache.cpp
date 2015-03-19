@@ -35,23 +35,43 @@ merge_cache::merge_cache (mapredo::base& reducer,
 void
 merge_cache::add (const uint16_t hash_index,
 		  const char* buffer,
-		  const size_t size)
+		  const uint32_t size)
 {
-    auto list = _buffer_lists[hash_index];
 
-    if (_buffer_pos + size <= _buffer_size)
+    if (_buffer_pos + size > _buffer_size)
     {
-	list.emplace_back (buffer,size);
-	_buffer_pos += size;
-    }
-    else
-    {
-	file_merger merger (_reducer, _tmpdir, _index, 3);
 	for (auto& list: _buffer_lists)
 	{
-	    auto& flist = _tmpfiles[list.first];
-	    flist.push (merger.merge_to_file (std::list<std::string>(),
-					      list.second, nullptr);
+	    if (list.second.size())
+	    {
+		file_merger merger (_reducer, _tmpdir, _index, 3,
+				    std::list<std::string>(),
+				    std::move(list.second));
+	    }
 	}
     }
+
+    auto list = _buffer_lists[hash_index];
+    char* dest = _buffer.get() + _buffer_pos;
+
+    memcpy (dest, buffer, size);
+    list.emplace_back (dest, size);
+    _buffer_pos += size;
+}
+
+void
+merge_cache::append_cache_buffers (const uint16_t index, buffer_list& list)
+{
+    auto iter = _buffer_lists.find (index);
+
+    if (iter != _buffer_lists.end()) list.splice (list.end(), iter->second);
+}
+
+void
+merge_cache::append_tmpfiles (const uint16_t index,
+			      std::list<std::string>& list)
+{
+    auto iter = _tmpfiles.find (index);
+
+    if (iter != _tmpfiles.end()) list.splice (list.end(), iter->second);
 }

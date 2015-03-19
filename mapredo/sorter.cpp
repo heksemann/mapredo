@@ -26,6 +26,7 @@
 #include "tmpfile_reader.h"
 #include "file_merger.h"
 #include "settings.h"
+#include "merge_cache.h"
 #include "compression.h"
 
 sorter::sorter (const std::string& tmpdir,
@@ -33,12 +34,14 @@ sorter::sorter (const std::string& tmpdir,
 		const uint16_t worker_index,
 		const size_t bytes_buffer,
 		const mapredo::base::keytype type,
+		merge_cache* const cache,
 		const bool reverse) :
     _buffer (bytes_buffer, 3.0),
     _tmpdir (tmpdir),
     _bytes_per_buffer (bytes_buffer),
     _index (hash_index),
     _type (type),
+    _cache (cache),
     _reverse (reverse)
 {
     std::ostringstream filename;

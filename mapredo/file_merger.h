@@ -19,17 +19,16 @@
 
 #include <string>
 #include <list>
-#include <forward_list>
-#include <thread>
 
+#include "rcollector.h"
 #include "tmpfile_reader.h"
 #include "settings.h"
 #include "valuelist.h"
 #include "mapreducer.h"
 #include "tmpfile_collector.h"
 #include "data_reader_queue.h"
-//#include "key_holder.h"
-template <class T> class key_holder;
+#include "key_holder.h"
+#include "merge_cache.h"
 
 namespace mapredo
 {
@@ -39,7 +38,7 @@ namespace mapredo
 /**
  * Does merging of temporary data from different files in the sorting phase
  */
-class file_merger final
+class file_merger final : public mapredo::rcollector
 {
 public:
     /**
@@ -47,80 +46,34 @@ public:
      * @param tmpdir working directory for temporary files
      * @param index worker index
      * @param max_open_files maximum number of files open at any time
+     * @param tmpfiles temporary files to merge
+     * @param cache_buffers buffers cached in RAM to include in merge
      */
     file_merger (mapredo::base& reducer,
 		 const std::string& tmpdir,
 		 const size_t index,
-		 const size_t max_open_files);
+		 const size_t max_open_files,
+		 std::list<std::string>&& tmpfiles,
+		 merge_cache::buffer_list&& cache_buffers);
     ~file_merger() {}
 
     /**
      * Go through all sorted temporary files and generate a single sorted
      * stream.
      */
-    template <typename T>
-    void merge (std::list<std::string>&& tmpfiles,
-		data_reader_queue<T>&& cache_readers) {
-	while (!tmpfiles.empty())
-	{
-	    merge_max_files<T> (TO_OUTPUT);
-	    if (_texception) return;
-	}
-    }
+    void merge();
 
     /**
      * Merge to a single file and return the file name.  This may also
      * output final data to an alternate sink.
      * @param alt_output if not nullptr, attempt to write to this first
      */
-    template <typename T>
-    std::string merge_to_file (std::list<std::string>&& tmpfiles,
-			       data_reader_queue<T>&& cache_readers,
-			       prefered_output* alt_output) {
-	try
-	{
-	    do
-	    {
-		merge_max_files<T> (TO_SINGLE_FILE, alt_output);
-	    }
-	    while (_tmpfiles.size() > 1);
-
-	    return _tmpfiles.front();
-	}
-	catch (...)
-	{
-	    _texception = std::current_exception();
-	    return ("");
-	}
-    }
+    std::string merge_to_file (prefered_output* alt_output);
 
     /**
      * Merge to at most max_open_files file and return the file names.
      */
-    template <typename T>
-    std::list<std::string> merge_to_files(std::list<std::string>&& tmpfiles,
-					  data_reader_queue<T>&& readers) {
-	try
-	{
-	    while (_tmpfiles.size() > _num_merged_files
-		   || _tmpfiles.size() > _max_open_files)
-	    {
-		if (_tmpfiles.size() == _num_merged_files)
-		{
-		    // We have to re-merge files because we still have too many
-		    _num_merged_files = 0;
-		}
-		merge_max_files<T> (TO_MAX_FILES);
-	    }
-
-	    return _tmpfiles;
-	}
-	catch (...)
-	{
-	    _texception = std::current_exception();
-	    return (std::list<std::string>());
-	}
-    }
+    std::list<std::string> merge_to_files();
 
     /** Function called by reducer to report output. */
     void collect (const char* line, const size_t length);
@@ -152,9 +105,11 @@ private:
 	    _buffer_pos = 0;
 	}
     }
-    template <typename T>
     void merge_max_files (const merge_mode mode,
 			  prefered_output* alt_output = nullptr);
+
+    template <typename T> void do_merge (const merge_mode mode,
+					 prefered_output* alt_output = nullptr);
 
     mapredo::base& _reducer;
     static const size_t _buffer_size = 0x10000;
@@ -163,6 +118,7 @@ private:
     std::string _file_prefix;
     int _tmpfile_id = 0;
     std::list<std::string> _tmpfiles;
+    merge_cache::buffer_list _cache_buffers;
     std::unique_ptr<compression> _compressor;
     char _buffer[_buffer_size];
     std::unique_ptr<char[]> _coutbuffer;
@@ -172,41 +128,9 @@ private:
     std::exception_ptr _texception = nullptr;
 };
 
-file_merger::file_merger (mapredo::base& reducer,
-			  const std::string& tmpdir,
-			  const size_t index,
-			  const size_t max_open_files) :
-    _reducer (reducer),
-    _max_open_files (max_open_files)
-{
-    std::ostringstream filename;
-
-    filename << tmpdir << "/merge_" << std::this_thread::get_id()
-	     << ".w" << index << '.';
-    _file_prefix = filename.str();
-
-    if (max_open_files < 3)
-    {
-	throw std::runtime_error ("Can not operate on less than three files"
-				  " per bucket");
-    }
-
-    if (settings::instance().compressed()) 
-    {
-        _compressor.reset (new compression());
-    }
-}
-
-file_merger::file_merger (file_merger&& other) :
-    _reducer (other._reducer),
-    _max_open_files (other._max_open_files),
-    _file_prefix (std::move(other._file_prefix))
-{}
-
-
 template <typename T> void
-file_merger::merge_max_files (const merge_mode mode,
-			      prefered_output* alt_output)
+file_merger::do_merge (const merge_mode mode,
+		       prefered_output* alt_output)
 {
     data_reader_queue<T> queue (settings::instance().reverse_sort());
     size_t files;

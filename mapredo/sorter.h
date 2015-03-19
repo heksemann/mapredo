@@ -25,6 +25,7 @@
 #include "sorter_buffer.h"
 #include "base.h"
 
+class merge_cache;
 class compression;
 
 /**
@@ -45,6 +46,7 @@ public:
 	    const uint16_t worker_index,
 	    const size_t max_bytes_buffer,
 	    const mapredo::base::keytype type,
+	    merge_cache* const cache,
 	    const bool reverse);
     sorter (sorter&& other) noexcept;
     ~sorter();
@@ -93,6 +95,7 @@ private:
     bool _flushing_in_progress = false;
     std::future<std::string> _flush_result;
     const mapredo::base::keytype _type;
+    merge_cache* _cache;
     const bool _reverse;
 };
 

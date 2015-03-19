@@ -31,7 +31,7 @@
 class merge_cache
 {
 public:
-    using buffer_list = std::vector<std::pair<char*,uint32_t>>;
+    using buffer_list = std::list<std::pair<char*,uint32_t>>;
     
     /*
      * @param reducer map-reducer plugin object
@@ -54,17 +54,23 @@ public:
      */
     void add (const uint16_t hash_index,
 	      const char* buffer,
-	      const size_t size);
+	      const uint32_t size);
 
     /**
-     * Steal the list of buffers for a hash index from this object.
+     * Append all cached sorted buffers of a hash index to a list, and
+     * remove them from this object. 
+     * @param index hash index to grab list from
+     * @param list where to append the buffer information
      */
-    buffer_list grab_buffers (const uint16_t hash_index);
+    void append_cache_buffers (const uint16_t index, buffer_list& list);
 
     /**
-     * Steal the list of temporary files for a hash index from this object.
+     * Append all temporary files of a given index to a list of files,
+     * and remove them from this object.
+     * @param index hash index to grab list from
+     * @param list where to append the filenames
      */
-    std::list<std::string> grab_files (const uint16_t hash_index);
+    void append_tmpfiles (const uint16_t index, std::list<std::string>& list);
 
 private:
     mapredo::base& _reducer;
