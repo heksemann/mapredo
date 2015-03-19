@@ -19,11 +19,8 @@
 
 #include <memory>
 #include <unordered_map>
-#include <forward_list>
 
-#include "ram_reader.h"
 #include "base.h"
-#include "data_reader_queue.h"
 
 /**
  * Keeps sorted data in memory for use in merge sorting.  This allows
@@ -34,6 +31,8 @@
 class merge_cache
 {
 public:
+    using buffer_list = std::vector<std::pair<char*,uint32_t>>;
+    
     /*
      * @param reducer map-reducer plugin object
      * @param file_prefix prefix for created files
@@ -58,15 +57,16 @@ public:
 	      const size_t size);
 
     /**
-     * Take the list of buffers a hash index.  This removes the corresponding
-     * buffer list in this object.
+     * Steal the list of buffers for a hash index from this object.
      */
-    template <typename T>
-    data_reader_queue<T> grab_readers (const uint16_t hash_index);
+    buffer_list grab_buffers (const uint16_t hash_index);
+
+    /**
+     * Steal the list of temporary files for a hash index from this object.
+     */
+    std::list<std::string> grab_files (const uint16_t hash_index);
 
 private:
-    using buffer_list = std::vector<std::pair<char*,uint32_t>>;
-    
     mapredo::base& _reducer;
     std::string _tmpdir;
     std::string _file_prefix;
@@ -74,14 +74,8 @@ private:
     const size_t _buffer_size;
     const size_t _index;
     size_t _buffer_pos = 0;
-    std::unordered_map<int, buffer_list> _buckets;
-    std::unordered_map<int, std::string> _tmpfiles;
+    std::unordered_map<int, buffer_list> _buffer_lists;
+    std::unordered_map<int, std::list<std::string>> _tmpfiles;
 };
-
-template <typename T> data_reader_queue<T>
-merge_cache::grab_readers (const uint16_t hash_index)
-{
-    
-}
 
 #endif
