@@ -69,7 +69,7 @@ static void reduce (const std::string& plugin_file,
 	std::cerr << stream.str();
     }
 
-    engine mapred_engine (plugin_file, work_dir, subdir, parallel, 0,
+    engine mapred_engine (plugin_file, work_dir, subdir, parallel, 0, 0,
 			  max_files);
     auto start_time (std::chrono::high_resolution_clock::now());
 
@@ -88,12 +88,13 @@ static void run (const std::string& plugin_file,
 		 const std::string& subdir,
 		 const bool verbose,
 		 const size_t buffer_size,
+		 const size_t merger_cache_size,
 		 const uint16_t parallel,
 		 const int max_files,
 		 const bool map_only)
 {
     engine mapred_engine (plugin_file, work_dir, subdir, parallel, buffer_size,
-			  max_files);
+			  merger_cache_size, max_files);
     size_t bytes;
     bool first = true;
     std::chrono::high_resolution_clock::time_point start_time;    
@@ -136,6 +137,8 @@ static void run (const std::string& plugin_file,
 		stream << plugin_file << ":\n"
 		       << " Using working directory " << work_dir << "\n"
 		       << " Sort buffer size is " << buffer_size << " bytes.\n"
+		       << " Merge cache size is " << merger_cache_size
+		       << " bytes.\n"
 		       << " Using " << parallel << " threads,  with HW"
 		       << " concurrency at "
 		       << std::thread::hardware_concurrency() << "\n";
@@ -175,8 +178,10 @@ static std::string get_default_workdir()
 int
 main (int argc, char* argv[])
 {
-    int64_t buffer_size;
-    const char* buffer_size_str = "2M";
+    size_t buffer_size;
+    size_t merger_cache_size;
+    const char* buffer_size_str = "500k";
+    const char* merger_cache_size_str = "";
     uint16_t parallel = std::thread::hardware_concurrency() + 1;
     int max_files = 20 * parallel;
     bool no_compression = false;
@@ -191,8 +196,11 @@ main (int argc, char* argv[])
     env = getenv ("MAPREDO_MAX_OPEN_FILES");
     if (env) max_files = atoi (env);
 
-    env = getenv ("MAPREDO_BUFFER_SIZE");
+    env = getenv ("MAPREDO_SORT_BUFFER_SIZE");
     if (env) buffer_size_str = env;
+
+    env = getenv ("MAPREDO_MERGE_BUFFER_SIZE");
+    if (env) merger_cache_size_str = env;
 
     env = getenv ("MAPREDO_COMPRESSION");
     if (env) no_compression = (env[0] == '0' || env[0] == 'f' || env[0] == 'F');
@@ -211,8 +219,11 @@ main (int argc, char* argv[])
 	    ("d", "work-dir", "Working directory to use",
 	     false, get_default_workdir(), "string", cmd);
 	TCLAP::ValueArg<std::string> buffer_size_arg
-	    ("b", "buffer-size", "Buffer size to use",
+	    ("B", "sort-buffer-size", "Buffer size to use per sort buffer",
 	     false, buffer_size_str, "size", cmd);
+	TCLAP::ValueArg<std::string> merger_cache_arg
+	    ("b", "merge-buffer-size", "Buffer size to use for in-memory merge",
+	     false, merger_cache_size_str, "size", cmd);
 	TCLAP::ValueArg<int> max_files_arg
 	    ("f", "max-open-files", "Maximum number of open files",
 	     false, max_files, "number", cmd);
@@ -243,9 +254,17 @@ main (int argc, char* argv[])
 
 	cmd.parse (argc, argv);
 	subdir = subdir_arg.getValue();
-	buffer_size = config.parse_size (buffer_size_arg.getValue());
-	max_files = max_files_arg.getValue();
 	parallel = threads_arg.getValue();
+	buffer_size = config.parse_size (buffer_size_arg.getValue());
+	if (merger_cache_arg.getValue().empty())
+	{
+	    merger_cache_size = parallel * 20*1024*1024;
+	}
+	else
+	{
+	    merger_cache_size = config.parse_size (merger_cache_arg.getValue());
+	}
+	max_files = max_files_arg.getValue();
 
 	if (!directory::exists(work_dir.getValue()))
 	{
@@ -300,7 +319,8 @@ main (int argc, char* argv[])
 	{
 	    run (plugin_path.getValue(), inputfile.getValue(),
 		 work_dir.getValue(), subdir, verbose_arg.getValue(),
-		 buffer_size, parallel, max_files, map_only.getValue());
+		 buffer_size, merger_cache_size, parallel, max_files,
+		 map_only.getValue());
 	}
     }
     catch (const TCLAP::ArgException& e)

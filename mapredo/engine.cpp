@@ -42,12 +42,14 @@ engine::engine (const std::string& plugin,
 		const std::string& subdir,
 		const uint16_t parallel,
 		const size_t bytes_buffer,
+		const size_t merger_cache_size,
 		const int max_open_files) :
     _plugin_loader (plugin),
     _tmpdir (subdir.empty() ? tmpdir : (tmpdir + "/" + subdir)),
     _is_subdir (subdir.size()),
     _parallel (parallel),
     _bytes_buffer (bytes_buffer),
+    _merger_cache_size (merger_cache_size/parallel),
     _max_files (max_open_files),
     _buffer_trader (0x100000, parallel)
 {
@@ -63,6 +65,13 @@ engine::engine (const std::string& plugin,
     if (_is_subdir)
     {
 	if (!directory::exists(_tmpdir)) directory::create (_tmpdir);
+    }
+
+    if (_merger_cache_size < bytes_buffer * 2 && _merger_cache_size != 0)
+    {
+	throw std::runtime_error
+	    ("The merger cache buffer is too small, use either size 0"
+	     " or a larger size");
     }
 }
 
@@ -88,12 +97,22 @@ engine::prepare_input()
 	{
 	    mapredo::base& mapper (_plugin_loader.get());
 
-	    _merge_caches.emplace_back (mapper, _tmpdir, "FIXME",
-					1000000, i);
-	    _consumers.emplace_back (mapper, _tmpdir, _is_subdir,
-				     _parallel, i, _bytes_buffer,
-				     settings::instance().reverse_sort(),
-				     &_merge_caches.back());
+	    if (_merger_cache_size > 0)
+	    {
+		_merge_caches.emplace_back (mapper, _tmpdir, "FIXME",
+					    _merger_cache_size, i);
+		_consumers.emplace_back (mapper, _tmpdir, _is_subdir,
+					 _parallel, i, _bytes_buffer,
+					 settings::instance().reverse_sort(),
+					 &_merge_caches.back());
+	    }
+	    else
+	    {
+		_consumers.emplace_back (mapper, _tmpdir, _is_subdir,
+					 _parallel, i, _bytes_buffer,
+					 settings::instance().reverse_sort(),
+					 nullptr);
+	    }
 	    _consumers.back().start_thread (_buffer_trader);
 	}
 

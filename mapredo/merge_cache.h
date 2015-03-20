@@ -20,7 +20,8 @@
 #include <memory>
 #include <unordered_map>
 
-#include "base.h"
+namespace mapredo{class base;}
+class sorter_buffer;
 
 /**
  * Keeps sorted data in memory for use in merge sorting.  This allows
@@ -49,12 +50,10 @@ public:
      * Add more data to the cache.  If the buffer is full, data will be merged
      * and flushed to disk.
      * @param hash_index which bucket to copy the data into
-     * @param buffer data to copy
-     * @param size bytes of data
+     * @param sorted a sorted buffer object ready to be copied
      */
     void add (const uint16_t hash_index,
-	      const char* buffer,
-	      const uint32_t size);
+	      const sorter_buffer& sorted);
 
     /**
      * Append all cached sorted buffers of a hash index to a list, and

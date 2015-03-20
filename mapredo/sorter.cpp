@@ -181,6 +181,12 @@ sorter::flush()
 	break;
     }
 
+    if (_cache)
+    {
+	_cache->add (_index, _buffer);
+	return;
+    }
+
     std::ofstream tmpfile;
     std::ostringstream filename;
 

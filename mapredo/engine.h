@@ -46,7 +46,11 @@ public:
      * @param subdirectory under temporary directory, may be empty
      * @param parallel the number of worker threads
      * @param bytes_buffer number of bytes in each sort buffer, must be at
-     *        least as high as parallel.
+     *        least as high as parallel.  The size should fit in L2 cache.
+     * @param merger_cache_size number of bytes in RAM buffers for in-memory
+     *        merge.  This should be much larger than bytes_buffer to have a
+     *        positive effect, and an exception is thrown unless it is 0 or
+     *        at least bytes_buffer * parallel * 2 bytes.
      * @param max_open_files the maximum number of files open while merging
      */
     engine (const std::string& plugin,
@@ -54,6 +58,7 @@ public:
 	    const std::string& subdir,
 	    const uint16_t parallel,
 	    const size_t bytes_buffer,
+	    const size_t merger_cache_size,
 	    const int max_open_files);
     virtual ~engine();
 
@@ -102,6 +107,7 @@ private:
     bool _is_subdir = false;
     size_t _parallel;
     size_t _bytes_buffer;
+    size_t _merger_cache_size = 0;
     int _max_files;
     size_t _unique_id = 0;
 

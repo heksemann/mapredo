@@ -18,6 +18,8 @@
 
 #include "merge_cache.h"
 #include "file_merger.h"
+#include "base.h"
+#include "sorter_buffer.h"
 
 merge_cache::merge_cache (mapredo::base& reducer,
 			  const std::string& tmpdir,
@@ -33,10 +35,9 @@ merge_cache::merge_cache (mapredo::base& reducer,
 {}
 
 void
-merge_cache::add (const uint16_t hash_index,
-		  const char* buffer,
-		  const uint32_t size)
+merge_cache::add (const uint16_t hash_index, const sorter_buffer& sorted)
 {
+    size_t size = sorted.buffer_size();
 
     if (_buffer_pos + size > _buffer_size)
     {
@@ -54,8 +55,14 @@ merge_cache::add (const uint16_t hash_index,
     auto list = _buffer_lists[hash_index];
     char* dest = _buffer.get() + _buffer_pos;
 
-    memcpy (dest, buffer, size);
-    list.emplace_back (dest, size);
+    auto end = sorted.lookup().cbegin() + sorted.lookup_used();
+    
+    for (auto iter = sorted.lookup().begin(); iter != end; iter++)
+    {
+	memcpy (dest, iter->keyvalue(), iter->size());
+	dest += iter->size();
+    }
+    list.emplace_back (_buffer.get() + _buffer_pos, size);
     _buffer_pos += size;
 }
 

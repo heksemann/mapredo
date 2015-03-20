@@ -47,6 +47,8 @@ public:
 
     /** @return a reference to a vector of pointers to keyvalues */
     std::vector<struct lookup>& lookup() {return _lookup;}
+    /** @return a const reference to a vector of pointers to keyvalues */
+    const std::vector<struct lookup>& lookup() const {return _lookup;}
     /** @return size of lookup vector in elements */
     size_t lookup_size() const {return _lookup_size;}
     /** @return number of elements used in lookup vector */
