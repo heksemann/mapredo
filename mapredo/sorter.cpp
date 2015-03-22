@@ -64,6 +64,7 @@ sorter::sorter (sorter&& other) noexcept :
     _file_prefix (std::move(other._file_prefix)),
     _compressor (std::move(other._compressor)),
     _type (other._type),
+    _cache (other._cache),
     _reverse (other._reverse)
 {}
 
@@ -184,6 +185,7 @@ sorter::flush()
     if (_cache)
     {
 	_cache->add (_index, _buffer);
+	_buffer.clear();
 	return;
     }
 

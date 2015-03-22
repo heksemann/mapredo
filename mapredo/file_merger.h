@@ -29,6 +29,7 @@
 #include "data_reader_queue.h"
 #include "key_holder.h"
 #include "merge_cache.h"
+#include "ram_reader.h"
 
 namespace mapredo
 {
@@ -152,11 +153,17 @@ file_merger::do_merge (const merge_mode mode,
 	if (key) queue.push(proc);
 	else if (!settings::instance().keep_tmpfiles())
 	{
+	    delete proc;
 	    remove (filename.c_str());
 	}
 
 	_tmpfiles.pop_front();
     }
+    for (auto& cbuffer: _cache_buffers)
+    {
+	queue.push (new ram_reader<T>(cbuffer.first, cbuffer.second));
+    }
+
     if (settings::instance().verbose())
     {
 	std::ostringstream stream;

@@ -46,6 +46,8 @@ public:
 		 const size_t cache_size,
 		 const size_t index);
 
+    merge_cache (merge_cache&& other) = delete;
+
     /**
      * Add more data to the cache.  If the buffer is full, data will be merged
      * and flushed to disk.
@@ -70,6 +72,8 @@ public:
      * @param list where to append the filenames
      */
     void append_tmpfiles (const uint16_t index, std::list<std::string>& list);
+
+    merge_cache (merge_cache&) = delete;
 
 private:
     mapredo::base& _reducer;

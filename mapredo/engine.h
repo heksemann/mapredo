@@ -112,7 +112,7 @@ private:
     size_t _unique_id = 0;
 
     std::list<consumer> _consumers;
-    std::vector<merge_cache> _merge_caches;
+    std::list<merge_cache> _merge_caches;
     buffer_trader _buffer_trader;
 
     std::deque<file_merger> _mergers;

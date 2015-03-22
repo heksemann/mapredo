@@ -206,6 +206,7 @@ engine::complete_input (input_buffer* data)
 void
 engine::reduce()
 {
+    std::cerr << "Reduserer" << "\n";
     for (size_t i = 0; i < _parallel; i++)
     {
 	std::list<std::string> tmpfiles;
@@ -221,7 +222,9 @@ engine::reduce()
 	    cache.append_cache_buffers (i, buffers);
 	}
 
-	if ((tmpfiles.size() + buffers.size() <= 1)
+	std::cerr << "Tmpfiles: " << tmpfiles.size() << " buffers: "
+		  << buffers.size() << "\n";
+	if ((tmpfiles.size() + buffers.size() == 1)
 	    && settings::instance().sort_output())
 	{
 	    if (tmpfiles.size())
@@ -233,7 +236,7 @@ engine::reduce()
 		_buffers_final_merge.push_back (buffers.front());
 	    }
 	}
-	else
+	else if (tmpfiles.size() + buffers.size())
 	{
 	    _mergers.emplace_back (_plugin_loader.get(),
 				   _tmpdir, _unique_id++,

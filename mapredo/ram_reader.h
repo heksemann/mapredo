@@ -31,7 +31,7 @@ public:
      * @param size buffer size
      */
     ram_reader (char* const buffer, const size_t size)  {
-        this->buffer = buffer;
+        this->_buffer = buffer;
 	this->_end_pos = size;
 	this->fill_next_line();
     }
