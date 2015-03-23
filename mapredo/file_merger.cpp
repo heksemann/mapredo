@@ -68,7 +68,7 @@ file_merger::file_merger (file_merger&& other) :
 void
 file_merger::merge()
 {
-    while (!_tmpfiles.empty())
+    while (!_cache_buffers.empty() || !_tmpfiles.empty())
     {
 	merge_max_files (TO_OUTPUT);
 	if (_texception) return;
@@ -84,7 +84,7 @@ file_merger::merge_to_file (prefered_output* alt_output)
 	{
 	    merge_max_files (TO_SINGLE_FILE, alt_output);
 	}
-	while (_tmpfiles.size() > 1);
+	while (!_cache_buffers.empty() || _tmpfiles.size() > 1);
 
 	return _tmpfiles.front();
     }
@@ -100,7 +100,8 @@ file_merger::merge_to_files()
 {
     try
     {
-	while (_tmpfiles.size() > _num_merged_files
+	while (!_cache_buffers.empty()
+	       || _tmpfiles.size() > _num_merged_files
 	       || _tmpfiles.size() > _max_open_files)
 	{
 	    if (_tmpfiles.size() == _num_merged_files)
