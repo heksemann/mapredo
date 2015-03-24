@@ -206,7 +206,6 @@ engine::complete_input (input_buffer* data)
 void
 engine::reduce()
 {
-    std::cerr << "Reduserer" << "\n";
     for (size_t i = 0; i < _parallel; i++)
     {
 	std::list<std::string> tmpfiles;
@@ -222,8 +221,6 @@ engine::reduce()
 	    cache.append_cache_buffers (i, buffers);
 	}
 
-	std::cerr << "Tmpfiles: " << tmpfiles.size() << " buffers: "
-		  << buffers.size() << "\n";
 	if ((tmpfiles.size() + buffers.size() == 1)
 	    && settings::instance().sort_output())
 	{

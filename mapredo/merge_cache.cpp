@@ -46,11 +46,10 @@ merge_cache::add (const uint16_t hash_index, const sorter_buffer& sorted)
 	    if (list.second.size())
 	    {
 		std::cerr << "Lager merger\n";
-#if 0
 		file_merger merger (_reducer, _tmpdir, _index, 3,
 				    std::list<std::string>(),
 				    std::move(list.second));
-#endif
+		merger.merge_to_file (nullptr);
 		std::cerr << "Lagd merger\n";
 	    }
 	}
@@ -68,9 +67,8 @@ merge_cache::add (const uint16_t hash_index, const sorter_buffer& sorted)
 	memcpy (dest, iter->keyvalue(), iter->size());
 	dest += iter->size();
     }
-    size = dest - _buffer.get();
-    list.emplace_back (_buffer.get() + _buffer_pos, size);
-    _buffer_pos += size;
+    list.emplace_back (_buffer.get() + _buffer_pos, sorted.buffer_used());
+    _buffer_pos += sorted.buffer_used();
 }
 
 void
@@ -80,7 +78,6 @@ merge_cache::append_cache_buffers (const uint16_t index, buffer_list& list)
 
     if (iter != _buffer_lists.end())
     {
-	std::cerr << "Append " << index << ": " << iter->second.size() << "\n";
 	list.splice (list.end(), iter->second);
     }
 }

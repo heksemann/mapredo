@@ -44,6 +44,8 @@ public:
     size_t buffer_size() const {return _buffer_size;}
     /** @return number of bytes used in buffer */
     size_t& buffer_used()  {return _buffer_used;}
+    /** @return number of bytes used in buffer */
+    size_t buffer_used()  const {return _buffer_used;}
 
     /** @return a reference to a vector of pointers to keyvalues */
     std::vector<struct lookup>& lookup() {return _lookup;}

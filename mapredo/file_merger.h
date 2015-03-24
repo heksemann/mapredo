@@ -163,6 +163,7 @@ file_merger::do_merge (const merge_mode mode,
     {
 	queue.push (new ram_reader<T>(cbuffer.first, cbuffer.second));
     }
+    _cache_buffers.clear();
 
     if (settings::instance().verbose())
     {
